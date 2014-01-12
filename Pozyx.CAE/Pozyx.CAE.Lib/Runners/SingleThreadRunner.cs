@@ -8,22 +8,23 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class SingleThreadRunner : IRunner
+    public class SingleThreadRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
     {
         private const int BitsInByte = 8;
 
-        public IConnectableObservable<PositionedBitArray> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
+        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {            
             var rule = GetBitArrayForRule(ruleNumber);
 
-            return Observable.Create<PositionedBitArray>(observer =>
+            return Observable.Create<TCellSpace>(observer =>
             {                
                 Task.Run(() =>
                 {
                     if (threadInit != null)
                         threadInit();
-        
-                    var prevStep = new PositionedBitArray(new BitArray(1, true), 0);
+
+                    var prevStep = new TCellSpace();
+                    prevStep.Initialize(new BitArray(1, true), 0);
 
                     int? leftMostChangedIndex = 0;
                     int? rightMostChangedIndex = 0;
@@ -32,7 +33,7 @@ namespace Pozyx.CAE.Lib.Runners
                     {                        
                         ct.ThrowIfCancellationRequested();
 
-                        //var nextStepLength = prevStep.BitArray.Length + 2; // TODO: optimize
+                        //var nextStepLength = prevStep._bitArray.Length + 2; // TODO: optimize
                         //var nextStepOffset = prevStep.Offset - 1; // TODO: optimize                        
 
                         if (!leftMostChangedIndex.HasValue)
@@ -42,9 +43,10 @@ namespace Pozyx.CAE.Lib.Runners
                         }                        
 
                         var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;                        
-                        var nextStepOffset = leftMostChangedIndex.Value - 1;                        
+                        var nextStepOffset = leftMostChangedIndex.Value - 1;
 
-                        var nextStep = new PositionedBitArray(new BitArray(nextStepLength), nextStepOffset);                        
+                        var nextStep = new TCellSpace();
+                        nextStep.Initialize(new BitArray(nextStepLength), nextStepOffset);
 
                         leftMostChangedIndex = null;
                         rightMostChangedIndex = null;

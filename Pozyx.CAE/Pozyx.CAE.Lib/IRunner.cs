@@ -4,8 +4,8 @@ using System.Threading;
 
 namespace Pozyx.CAE.Lib
 {
-    public interface IRunner
+    public interface IRunner<out TCellSpace> where TCellSpace : ICellSpace, new()
     {
-        IConnectableObservable<PositionedBitArray> Create(int ruleNumber, CancellationToken ct, Action threadInit = null);
+        IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null);
     }
 }
