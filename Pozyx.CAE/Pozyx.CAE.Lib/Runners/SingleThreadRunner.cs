@@ -12,14 +12,17 @@ namespace Pozyx.CAE.Lib.Runners
     {
         private const int BitsInByte = 8;
 
-        public IConnectableObservable<PositionedBitArray> Create(int ruleNumber, CancellationToken ct)
+        public IConnectableObservable<PositionedBitArray> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {            
             var rule = GetBitArrayForRule(ruleNumber);
 
             return Observable.Create<PositionedBitArray>(observer =>
             {                
                 Task.Run(() =>
-                {                                        
+                {
+                    if (threadInit != null)
+                        threadInit();
+        
                     var prevStep = new PositionedBitArray(new BitArray(1, true), 0);
 
                     int? leftMostChangedIndex = 0;
