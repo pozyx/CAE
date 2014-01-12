@@ -33,6 +33,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="BoolArrayCellSpace.cs" />
     <Compile Include="BitArrayCellSpace.cs" />
     <Compile Include="ICellSpace.cs" />
     <Compile Include="IRunner.cs" />
