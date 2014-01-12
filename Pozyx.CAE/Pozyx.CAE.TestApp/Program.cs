@@ -10,7 +10,7 @@ namespace Pozyx.CAE.TestApp
         {
             RunnerTest.Initialize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Pozyx.CAE"));
 
-            (new RunnerTest()).TestFakeRunner();                       
+            (new RunnerTest()).TestSingleThreadCpuRunner();                       
         }        
     }
 }

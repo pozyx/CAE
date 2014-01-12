@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class SingleThreadRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
-    {
-        private const int BitsInByte = 8;
-
+    public class SingleThreadCpuRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
+    {        
         public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {            
             var rule = GetBitArrayForRule(ruleNumber);
@@ -31,10 +29,7 @@ namespace Pozyx.CAE.Lib.Runners
 
                     while (true)
                     {                        
-                        ct.ThrowIfCancellationRequested();
-
-                        //var nextStepLength = prevStep._bitArray.Length + 2; // TODO: optimize
-                        //var nextStepOffset = prevStep.Offset - 1; // TODO: optimize                        
+                        ct.ThrowIfCancellationRequested();                  
 
                         if (!leftMostChangedIndex.HasValue)
                         {

@@ -39,7 +39,8 @@
     <Compile Include="IRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runners\FakeRunner.cs" />
-    <Compile Include="Runners\SingleThreadRunner.cs" />
+    <Compile Include="Runners\MultipleThreadsCpuRunner.cs" />
+    <Compile Include="Runners\SingleThreadCpuRunner.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Reactive.Core">
