@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace Pozyx.CAE.Lib
+namespace Pozyx.CAE.Lib.CellSpaces
 {
     public interface ICellSpace
     {        
@@ -9,6 +9,5 @@ namespace Pozyx.CAE.Lib
         void Initialize(BitArray bitArray, int offset);        
         bool Get(int index);
         void Set(int index, bool value);
-        string ToCellString(long? spaceStart = null);
     }
 }

@@ -12,6 +12,7 @@ namespace Pozyx.CAE.Windows8
         /// </summary>
         /// <param name="cpus">A list of CPU numbers. The values should be
         /// between 0 and <see cref="Environment.ProcessorCount"/>.</param>
+        /// <remarks>Taken from http://stackoverflow.com/questions/12328751/set-thread-processor-affinity-in-microsoft-net</remarks>
         public static void SetThreadProcessorAffinity(params int[] cpus)
         {
             if (cpus == null)

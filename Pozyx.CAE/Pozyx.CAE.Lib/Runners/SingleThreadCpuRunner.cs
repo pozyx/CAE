@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Pozyx.CAE.Lib.CellSpaces;
+using System;
 using System.Collections;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -9,67 +10,21 @@ using System.Threading.Tasks;
 namespace Pozyx.CAE.Lib.Runners
 {
     public class SingleThreadCpuRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
-    {        
+    {
         public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
-        {            
-            var rule = GetBitArrayForRule(ruleNumber);
+        {
+            var rule = RulesTools.GetBitArrayForRule(ruleNumber);
 
             return Observable.Create<TCellSpace>(observer =>
-            {                
+            {
                 Task.Run(() =>
                 {
                     if (threadInit != null)
                         threadInit();
 
-                    var prevStep = new TCellSpace();
-                    prevStep.Initialize(new BitArray(1, true), 0);
-
-                    int? leftMostChangedIndex = 0;
-                    int? rightMostChangedIndex = 0;
-
-                    while (true)
-                    {                        
-                        ct.ThrowIfCancellationRequested();                  
-
-                        if (!leftMostChangedIndex.HasValue)
-                        {
-                            observer.OnCompleted();
-                            break;
-                        }                        
-
-                        var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;                        
-                        var nextStepOffset = leftMostChangedIndex.Value - 1;
-
-                        var nextStep = new TCellSpace();
-                        nextStep.Initialize(new BitArray(nextStepLength), nextStepOffset);
-
-                        leftMostChangedIndex = null;
-                        rightMostChangedIndex = null;
-
-                        for (var index = nextStepOffset; index < nextStepLength + nextStepOffset; index++)
-                        {                            
-                            var oldLeftValue = prevStep.Get(index - 1);
-                            var oldValue = prevStep.Get(index);
-                            var oldRightValue = prevStep.Get(index + 1);                            
-
-                            var newValue = ApplyRule(oldLeftValue, oldValue, oldRightValue, rule);                            
-
-                            nextStep.Set(index, newValue);
-
-                            if (!newValue && !oldValue) continue;
-
-                            if (!leftMostChangedIndex.HasValue)                            
-                                leftMostChangedIndex = index;                                
-
-                            rightMostChangedIndex = index;
-                        }                        
-
-                        observer.OnNext(nextStep);
-
-                        prevStep = nextStep;
-                    }
+                    Run(observer, rule, ct);
                 },
-                ct)                
+                ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsCanceled)
@@ -83,21 +38,52 @@ namespace Pozyx.CAE.Lib.Runners
             })
             .Publish();
         }
-        
-        private static bool ApplyRule(bool leftValue, bool value, bool rightValue, BitArray rule)
-        {            
-            return rule.Get(
-                (((leftValue ? 1 : 0)*4) + 
-                 ((value ? 1 : 0)*2) + 
-                 (rightValue ? 1 : 0)*1));
-        }
 
-        private static BitArray GetBitArrayForRule(int ruleNumber)
+        private static void Run(IObserver<TCellSpace> observer, BitArray rule, CancellationToken ct)
         {
-            if (ruleNumber < 0 || ruleNumber > 255)
-                throw new InvalidOperationException("Invalid rule number");
+            var prevStep = new TCellSpace();
+            prevStep.Initialize(new BitArray(1, true), 0);
+            observer.OnNext(prevStep);
 
-            return new BitArray(new[] { ((byte)ruleNumber) });
+            int? leftMostChangedIndex = 0;
+            int? rightMostChangedIndex = 0;
+
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (!leftMostChangedIndex.HasValue)
+                {
+                    observer.OnCompleted();
+                    break;
+                }
+
+                var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;
+                var nextStepOffset = leftMostChangedIndex.Value - 1;
+
+                var nextStep = new TCellSpace();
+                nextStep.Initialize(new BitArray(nextStepLength), nextStepOffset);
+
+                leftMostChangedIndex = null;
+                rightMostChangedIndex = null;
+
+                for (var index = nextStepOffset; index < nextStepOffset + nextStepLength; index++)
+                {
+                    var trueOrChanged = RulesTools.ApplyRule(prevStep, nextStep, index, rule);
+
+                    if (trueOrChanged)
+                    {
+                        if (!leftMostChangedIndex.HasValue)
+                            leftMostChangedIndex = index;
+
+                        rightMostChangedIndex = index;
+                    }
+                }
+
+                observer.OnNext(nextStep);
+
+                prevStep = nextStep;
+            }
         }
     }
 }
