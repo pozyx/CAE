@@ -1,7 +1,7 @@
 ﻿using Pozyx.CAE.Lib.CellSpaces;
 using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -10,15 +10,18 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class TaskPerCellStepCpuRunner : IRunner<BoolArrayCellSpace>
+    public class PLinqCpuRunner : IRunner<BoolArrayCellSpace>
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {
+            if (threadInit != null)
+                throw new NotSupportedException("threadInit not supported");
+
             var rule = RulesTools.GetBitArrayForRule(ruleNumber);
 
             return Observable.Create<BoolArrayCellSpace>(observer =>
             {
-                Task.Run(() => Run(observer, rule, ct, threadInit), ct)
+                Task.Run(() => Run(observer, rule, ct), ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsCanceled)
@@ -36,8 +39,7 @@ namespace Pozyx.CAE.Lib.Runners
         private static void Run(
             IObserver<BoolArrayCellSpace> observer,
             BitArray rule,
-            CancellationToken ct,
-            Action threadInit)
+            CancellationToken ct)
         {
             var boundsSyncObj = new object();
 
@@ -68,34 +70,20 @@ namespace Pozyx.CAE.Lib.Runners
                 leftMostChangedIndex = null;
                 rightMostChangedIndex = null;
 
-                var cellTasksForStep = new List<Task>();
-
-                for (var index = nextStepOffset; index < nextStepOffset + nextStepLength; index++)
-                {
-                    var indexCaptured = index;
-
-                    var cellTask = new Task(() =>
+                ParallelEnumerable
+                    .Range(nextStepOffset, nextStepLength)
+                    .WithCancellation(ct)
+                    .ForAll(index =>
                     {
-                        if (threadInit != null)
-                            threadInit();
-
                         RunCellStep(
-                            ref prevStep,
-                            ref nextStep,
-                            indexCaptured,
-                            rule,
-                            ref leftMostChangedIndex,
-                            ref rightMostChangedIndex,
-                            boundsSyncObj);
-
-                    }, TaskCreationOptions.AttachedToParent);
-
-                    cellTasksForStep.Add(cellTask);
-
-                    cellTask.Start();
-                }
-
-                Task.WaitAll(cellTasksForStep.ToArray());
+                           ref prevStep,
+                           ref nextStep,
+                           index,
+                           rule,
+                           ref leftMostChangedIndex,
+                           ref rightMostChangedIndex,
+                           boundsSyncObj);
+                    });
 
                 observer.OnNext(nextStep);
 

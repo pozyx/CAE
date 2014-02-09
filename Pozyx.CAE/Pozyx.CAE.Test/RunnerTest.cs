@@ -48,6 +48,12 @@ namespace Pozyx.CAE.Test
             TestRunnerAndCompareWithRef(new TaskPerCellStepCpuRunner(), 110, 20);
         }
 
+        [TestMethod]
+        public void TestPLinqCpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new PLinqCpuRunner(), 110, 20);
+        }
+
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
         {
