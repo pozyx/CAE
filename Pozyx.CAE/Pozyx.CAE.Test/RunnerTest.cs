@@ -37,9 +37,15 @@ namespace Pozyx.CAE.Test
         }
 
         [TestMethod]
-        public void TestThreadPerCellCpuRunner()
+        public void TestTaskPerCellCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new ThreadPerCellCpuRunner(), 110, 5);
+            TestRunnerAndCompareWithRef(new TaskPerCellCpuRunner(), 110, 5);
+        }
+
+        [TestMethod]
+        public void TestTaskPerCellStepCpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new TaskPerCellStepCpuRunner(), 110, 20);
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)

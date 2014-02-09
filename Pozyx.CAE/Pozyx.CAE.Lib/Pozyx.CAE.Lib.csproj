@@ -42,8 +42,9 @@
     <Compile Include="Runners\IRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runners\FakeRunner.cs" />
-    <Compile Include="Runners\ThreadPerCellCpuRunner.cs" />
+    <Compile Include="Runners\TaskPerCellCpuRunner.cs" />
     <Compile Include="Runners\SingleThreadCpuRunner.cs" />
+    <Compile Include="Runners\TaskPerCellStepCpuRunner.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ParallelExtensionsExtras">

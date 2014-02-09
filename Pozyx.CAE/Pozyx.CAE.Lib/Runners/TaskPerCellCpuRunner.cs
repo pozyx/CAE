@@ -14,7 +14,7 @@ namespace Pozyx.CAE.Lib.Runners
     // ManualResetEventSlim - freezes after cca 30 sec.
     // ManualResetEvent - freezes after cca 3 sec.
 
-    public class ThreadPerCellCpuRunner : IRunner<BoolArrayCellSpace>
+    public class TaskPerCellCpuRunner : IRunner<BoolArrayCellSpace>
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {
