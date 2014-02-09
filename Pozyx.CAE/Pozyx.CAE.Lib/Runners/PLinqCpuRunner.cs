@@ -71,7 +71,7 @@ namespace Pozyx.CAE.Lib.Runners
                 rightMostChangedIndex = null;
 
                 ParallelEnumerable
-                    .Range(nextStepOffset, nextStepLength)
+                    .Range(nextStepOffset, nextStepLength - 1)
                     .WithCancellation(ct)
                     .ForAll(index =>
                     {
