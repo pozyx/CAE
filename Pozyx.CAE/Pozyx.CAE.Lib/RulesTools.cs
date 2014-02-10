@@ -6,7 +6,7 @@ namespace Pozyx.CAE.Lib
 {
     internal static class RulesTools
     {
-        public static bool ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, BitArray rule)
+        public static bool ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, bool[] rule)
         {
             var oldLeftValue = prevStep.Get(index - 1);
             var oldValue = prevStep.Get(index);
@@ -19,20 +19,25 @@ namespace Pozyx.CAE.Lib
             return newValue || oldValue;
         }
 
-        private static bool ApplyRule(bool leftValue, bool value, bool rightValue, BitArray rule)
+        private static bool ApplyRule(bool leftValue, bool value, bool rightValue, bool[] rule)
         {
-            return rule.Get(
-                (((leftValue ? 1 : 0) * 4) +
-                 ((value ? 1 : 0) * 2) +
-                 (rightValue ? 1 : 0) * 1));
+            return rule[
+                 (leftValue ? 4 : 0) +
+                 (value ? 2 : 0) +
+                 (rightValue ? 1 : 0)];
         }
 
-        public static BitArray GetBitArrayForRule(int ruleNumber)
+        public static bool[] GetBoolArrayForRule(int ruleNumber)
         {
             if (ruleNumber < 0 || ruleNumber > 255)
                 throw new InvalidOperationException("Invalid rule number");
 
-            return new BitArray(new[] { ((byte)ruleNumber) });
+            var bitArray = new BitArray(new[] { ((byte)ruleNumber) });
+
+            var bools = new bool[bitArray.Length];
+            ((ICollection)bitArray).CopyTo(bools, 0);
+
+            return bools;
         }
     }
 }

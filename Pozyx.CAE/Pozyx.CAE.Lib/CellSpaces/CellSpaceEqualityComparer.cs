@@ -11,16 +11,20 @@ namespace Pozyx.CAE.Lib.CellSpaces
             if (x == null) throw new ArgumentNullException("x");
             if (y == null) throw new ArgumentNullException("y");
 
-            return
-                x.Length == y.Length &&
-                x.Offset == y.Offset &&
-                Enumerable.Range(0, x.Length - 1)
-                    .All(i => x.Get(x.Offset + i) == y.Get(y.Offset + i));
+            var lowerBound = Math.Min(x.Offset, y.Offset);
+            var length = Math.Max(x.Offset + x.Length, y.Offset + y.Length) - lowerBound;
+
+            return Enumerable.Range(lowerBound, length - 1)
+                .All(i => x.Get(i) == y.Get(i));
         }
 
         public int GetHashCode(ICellSpace cs)
         {
-            return cs.Length ^ cs.Offset;
+            if (cs == null) throw new ArgumentNullException("cs");
+
+            return Enumerable.Range(0, 31)
+                .Sum(i => cs.Get(i) ? Math.Pow(2, i) : 0)
+                .GetHashCode();
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    public struct BoolArrayCellSpace : ICellSpace
+    public class BoolArrayCellSpace : ICellSpace
     {
         private bool[] _bools;
 
@@ -18,6 +18,12 @@ namespace Pozyx.CAE.Lib.CellSpaces
         {
             _bools = new bool[bitArray.Length];
             ((ICollection)bitArray).CopyTo(_bools, 0);
+            Offset = offset;
+        }
+
+        public void Initialize(int length, int offset)
+        {
+            _bools = new bool[length];
             Offset = offset;
         }
 

@@ -3,7 +3,7 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    public struct BitArrayCellSpace : ICellSpace
+    public class BitArrayCellSpace : ICellSpace
     {        
         private BitArray _bitArray;
 
@@ -17,6 +17,12 @@ namespace Pozyx.CAE.Lib.CellSpaces
         public void Initialize(BitArray bitArray, int offset)
         {
             _bitArray = bitArray;
+            Offset = offset;
+        }
+
+        public void Initialize(int length, int offset)
+        {
+            _bitArray = new BitArray(length);
             Offset = offset;
         }
 

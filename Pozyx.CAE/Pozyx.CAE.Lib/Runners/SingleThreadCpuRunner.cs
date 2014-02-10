@@ -13,7 +13,7 @@ namespace Pozyx.CAE.Lib.Runners
     {
         public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {
-            var rule = RulesTools.GetBitArrayForRule(ruleNumber);
+            var rule = RulesTools.GetBoolArrayForRule(ruleNumber);
 
             return Observable.Create<TCellSpace>(observer =>
             {
@@ -39,7 +39,7 @@ namespace Pozyx.CAE.Lib.Runners
             .Publish();
         }
 
-        private static void Run(IObserver<TCellSpace> observer, BitArray rule, CancellationToken ct)
+        private static void Run(IObserver<TCellSpace> observer, bool[] rule, CancellationToken ct)
         {
             var prevStep = new TCellSpace();
             prevStep.Initialize(new BitArray(1, true), 0);
@@ -62,7 +62,7 @@ namespace Pozyx.CAE.Lib.Runners
                 var nextStepOffset = leftMostChangedIndex.Value - 1;
 
                 var nextStep = new TCellSpace();
-                nextStep.Initialize(new BitArray(nextStepLength), nextStepOffset);
+                nextStep.Initialize(nextStepLength, nextStepOffset);
 
                 leftMostChangedIndex = null;
                 rightMostChangedIndex = null;
@@ -79,6 +79,9 @@ namespace Pozyx.CAE.Lib.Runners
                         rightMostChangedIndex = index;
                     }
                 }
+
+                //leftMostChangedIndex = nextStepOffset;
+                //rightMostChangedIndex = nextStepOffset + nextStepLength - 1;
 
                 observer.OnNext(nextStep);
 

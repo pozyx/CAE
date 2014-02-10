@@ -30,9 +30,10 @@ namespace Pozyx.CAE.Test
             _testOutputPath = testOutputPath;            
         }
 
-        //[TestMethod]
+        [TestMethod]
         public void TestSingleThreadCpuRunner()
         {
+            // TestType.RecordOutput | 
             TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics, false);
         }
 

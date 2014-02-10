@@ -14,7 +14,7 @@ namespace Pozyx.CAE.Lib.Runners
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
         {
-            var rule = RulesTools.GetBitArrayForRule(ruleNumber);
+            var rule = RulesTools.GetBoolArrayForRule(ruleNumber);
 
             return Observable.Create<BoolArrayCellSpace>(observer =>
             {
@@ -35,11 +35,11 @@ namespace Pozyx.CAE.Lib.Runners
 
         private static void Run(
             IObserver<BoolArrayCellSpace> observer,
-            BitArray rule,
+            bool[] rule,
             CancellationToken ct,
             Action threadInit)
         {
-            var boundsSyncObj = new object();
+            //var boundsSyncObj = new object();
 
             var prevStep = new BoolArrayCellSpace();
             prevStep.Initialize(new BitArray(1, true), 0);
@@ -53,20 +53,20 @@ namespace Pozyx.CAE.Lib.Runners
             {
                 ct.ThrowIfCancellationRequested();
 
-                if (!leftMostChangedIndex.HasValue)
-                {
-                    observer.OnCompleted();
-                    break;
-                }
+                //if (!leftMostChangedIndex.HasValue)
+                //{
+                //    observer.OnCompleted();
+                //    break;
+                //}
 
                 var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;
                 var nextStepOffset = leftMostChangedIndex.Value - 1;
 
                 nextStep = new BoolArrayCellSpace();
-                nextStep.Initialize(new BitArray(nextStepLength), nextStepOffset);
+                nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                leftMostChangedIndex = null;
-                rightMostChangedIndex = null;
+                //leftMostChangedIndex = null;
+                //rightMostChangedIndex = null;
 
                 var cellTasksForStep = new List<Task>();
 
@@ -79,14 +79,16 @@ namespace Pozyx.CAE.Lib.Runners
                         if (threadInit != null)
                             threadInit();
 
-                        RunCellStep(
-                            ref prevStep,
-                            ref nextStep,
-                            indexCaptured,
-                            rule,
-                            ref leftMostChangedIndex,
-                            ref rightMostChangedIndex,
-                            boundsSyncObj);
+                        //RunCellStep(
+                        //    ref prevStep,
+                        //    ref nextStep,
+                        //    indexCaptured,
+                        //    rule,
+                        //    ref leftMostChangedIndex,
+                        //    ref rightMostChangedIndex,
+                        //    boundsSyncObj);
+
+                        RulesTools.ApplyRule(prevStep, nextStep, indexCaptured, rule);
 
                     }, TaskCreationOptions.AttachedToParent);
 
@@ -97,34 +99,37 @@ namespace Pozyx.CAE.Lib.Runners
 
                 Task.WaitAll(cellTasksForStep.ToArray());
 
+                leftMostChangedIndex = nextStepOffset;
+                rightMostChangedIndex = nextStepOffset + nextStepLength - 1;
+
                 observer.OnNext(nextStep);
 
                 prevStep = nextStep;
             }
         }
 
-        private static void RunCellStep(
-            ref BoolArrayCellSpace prevStep,
-            ref BoolArrayCellSpace nextStep,
-            int index,
-            BitArray rule,
-            ref int? leftMostChangedIndex,
-            ref int? rightMostChangedIndex,
-            object boundsSyncObj)
-        {
-            var trueOrChanged = RulesTools.ApplyRule(prevStep, nextStep, index, rule);
+        //private static void RunCellStep(
+        //    ref BoolArrayCellSpace prevStep,
+        //    ref BoolArrayCellSpace nextStep,
+        //    int index,
+        //    BitArray rule,
+        //    ref int? leftMostChangedIndex,
+        //    ref int? rightMostChangedIndex,
+        //    object boundsSyncObj)
+        //{
+        //    var trueOrChanged = RulesTools.ApplyRule(prevStep, nextStep, index, rule);
 
-            if (trueOrChanged)
-            {
-                lock (boundsSyncObj)
-                {
-                    if (!leftMostChangedIndex.HasValue || index < leftMostChangedIndex.Value)
-                        leftMostChangedIndex = index;
+        //    if (trueOrChanged)
+        //    {
+        //        lock (boundsSyncObj)
+        //        {
+        //            if (!leftMostChangedIndex.HasValue || index < leftMostChangedIndex.Value)
+        //                leftMostChangedIndex = index;
 
-                    if (!rightMostChangedIndex.HasValue || index > rightMostChangedIndex.Value)
-                        rightMostChangedIndex = index;
-                }
-            }
-        }
+        //            if (!rightMostChangedIndex.HasValue || index > rightMostChangedIndex.Value)
+        //                rightMostChangedIndex = index;
+        //        }
+        //    }
+        //}
     }
 }
