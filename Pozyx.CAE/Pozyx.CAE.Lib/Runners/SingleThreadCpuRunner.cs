@@ -11,16 +11,18 @@ namespace Pozyx.CAE.Lib.Runners
 {
     public class SingleThreadCpuRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
     {
-        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
+        public Action ThreadInit { get; set; }
+
+        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
-            var rule = RulesTools.GetBoolArrayForRule(ruleNumber);
+            var rule = RuleTools.GetBoolArrayForRule(ruleNumber);
 
             return Observable.Create<TCellSpace>(observer =>
             {
                 Task.Run(() =>
                 {
-                    if (threadInit != null)
-                        threadInit();
+                    if (ThreadInit != null)
+                        ThreadInit();
 
                     Run(observer, rule, ct);
                 },
@@ -64,26 +66,12 @@ namespace Pozyx.CAE.Lib.Runners
                 var nextStep = new TCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                leftMostChangedIndex = null;
-                rightMostChangedIndex = null;
-
                 for (var index = nextStepOffset; index < nextStepOffset + nextStepLength; index++)
-                {
-                    var trueOrChanged = RulesTools.ApplyRule(prevStep, nextStep, index, rule);
-
-                    if (trueOrChanged)
-                    {
-                        if (!leftMostChangedIndex.HasValue)
-                            leftMostChangedIndex = index;
-
-                        rightMostChangedIndex = index;
-                    }
-                }
-
-                //leftMostChangedIndex = nextStepOffset;
-                //rightMostChangedIndex = nextStepOffset + nextStepLength - 1;
-
+                    RuleTools.ApplyRule(prevStep, nextStep, index, rule);
+               
                 observer.OnNext(nextStep);
+
+                CellSpaceTools.GetChangeBounds(prevStep, nextStep, out leftMostChangedIndex, out rightMostChangedIndex);
 
                 prevStep = nextStep;
             }

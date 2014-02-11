@@ -12,18 +12,11 @@ namespace Pozyx.CAE.Lib.Runners
 {
     public class FakeRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
     {
-        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
+        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
             return Observable.Create<TCellSpace>(observer =>
             {                                
-                Task.Run(() =>
-                {
-                    if (threadInit != null)
-                        threadInit();
-
-                    Run(observer, ct);
-                },
-                ct)                
+                Task.Run(() => Run(observer, ct), ct)                
                 .ContinueWith(t =>
                 {
                     if (t.IsCanceled)

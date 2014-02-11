@@ -35,10 +35,9 @@
   <ItemGroup>
     <Compile Include="CellSpaces\BoolArrayCellSpace.cs" />
     <Compile Include="CellSpaces\BitArrayCellSpace.cs" />
-    <Compile Include="CellSpaces\CellSpaceEqualityComparer.cs" />
-    <Compile Include="CellSpaces\CellSpaceExtensions.cs" />
+    <Compile Include="CellSpaces\CellSpaceTools.cs" />
     <Compile Include="CellSpaces\ICellSpace.cs" />
-    <Compile Include="RulesTools.cs" />
+    <Compile Include="RuleTools.cs" />
     <Compile Include="Runners\IRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runners\FakeRunner.cs" />

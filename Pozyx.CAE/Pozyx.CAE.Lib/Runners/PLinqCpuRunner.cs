@@ -12,12 +12,9 @@ namespace Pozyx.CAE.Lib.Runners
 {
     public class PLinqCpuRunner : IRunner<BoolArrayCellSpace>
     {
-        public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
+        public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
-            if (threadInit != null)
-                throw new NotSupportedException("threadInit not supported");
-
-            var rule = RulesTools.GetBoolArrayForRule(ruleNumber);
+            var rule = RuleTools.GetBoolArrayForRule(ruleNumber);
 
             return Observable.Create<BoolArrayCellSpace>(observer =>
             {
@@ -36,13 +33,8 @@ namespace Pozyx.CAE.Lib.Runners
             .Publish();
         }
 
-        private static void Run(
-            IObserver<BoolArrayCellSpace> observer,
-            bool[] rule,
-            CancellationToken ct)
+        private static void Run(IObserver<BoolArrayCellSpace> observer, bool[] rule, CancellationToken ct)
         {
-            //var boundsSyncObj = new object();
-
             var prevStep = new BoolArrayCellSpace();
             prevStep.Initialize(new BitArray(1, true), 0);
             observer.OnNext(prevStep);
@@ -55,11 +47,11 @@ namespace Pozyx.CAE.Lib.Runners
             {
                 ct.ThrowIfCancellationRequested();
 
-                //if (!leftMostChangedIndex.HasValue)
-                //{
-                //    observer.OnCompleted();
-                //    break;
-                //}
+                if (!leftMostChangedIndex.HasValue)
+                {
+                    observer.OnCompleted();
+                    break;
+                }
 
                 var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;
                 var nextStepOffset = leftMostChangedIndex.Value - 1;
@@ -67,57 +59,17 @@ namespace Pozyx.CAE.Lib.Runners
                 nextStep = new BoolArrayCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                //leftMostChangedIndex = null;
-                //rightMostChangedIndex = null;
-
                 ParallelEnumerable
                     .Range(nextStepOffset, nextStepLength - 1)
                     .WithCancellation(ct)
-                    .ForAll(index =>
-                    {
-                        //RunCellStep(
-                        //   ref prevStep,
-                        //   ref nextStep,
-                        //   index,
-                        //   rule,
-                        //   ref leftMostChangedIndex,
-                        //   ref rightMostChangedIndex,
-                        //   boundsSyncObj);
-
-                        RulesTools.ApplyRule(prevStep, nextStep, index, rule);
-                    });
-
-                leftMostChangedIndex = nextStepOffset;
-                rightMostChangedIndex = nextStepOffset + nextStepLength - 1;
+                    .ForAll(index => RuleTools.ApplyRule(prevStep, nextStep, index, rule));
 
                 observer.OnNext(nextStep);
+
+                CellSpaceTools.GetChangeBounds(prevStep, nextStep, out leftMostChangedIndex, out rightMostChangedIndex);
 
                 prevStep = nextStep;
             }
         }
-
-        //private static void RunCellStep(
-        //    ref BoolArrayCellSpace prevStep,
-        //    ref BoolArrayCellSpace nextStep,
-        //    int index,
-        //    bool[]  rule,
-        //    ref int? leftMostChangedIndex,
-        //    ref int? rightMostChangedIndex,
-        //    object boundsSyncObj)
-        //{
-        //    var trueOrChanged = RulesTools.ApplyRule(prevStep, nextStep, index, rule);
-
-        //    if (trueOrChanged)
-        //    {
-        //        lock (boundsSyncObj)
-        //        {
-        //            if (!leftMostChangedIndex.HasValue || index < leftMostChangedIndex.Value)
-        //                leftMostChangedIndex = index;
-
-        //            if (!rightMostChangedIndex.HasValue || index > rightMostChangedIndex.Value)
-        //                rightMostChangedIndex = index;
-        //        }
-        //    }
-        //}
     }
 }

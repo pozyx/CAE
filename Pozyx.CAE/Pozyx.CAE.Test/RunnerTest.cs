@@ -34,13 +34,15 @@ namespace Pozyx.CAE.Test
         public void TestSingleThreadCpuRunner()
         {
             // TestType.RecordOutput | 
-            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics, false);
+            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>()
+                            //{ ThreadInit = () => ThreadingTools.SetThreadProcessorAffinity(1) }
+                      , 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestTaskPerCellCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCellCpuRunner(), 110, 5);
+            TestRunnerAndCompareWithRef(new TaskPerCellCpuRunner(), 110, 20);
         }
 
         [TestMethod]
@@ -58,43 +60,38 @@ namespace Pozyx.CAE.Test
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
         {
-            Trace.WriteLine("CAE\tRunning...");
+            Trace.WriteLine("CAE:\tRunning...");
             // TestType.RecordOutput |
             var result = TestRunner(runner, ruleNumber, seconds, TestType.TraceStatistics | TestType.RecordOutputToMemory);
 
             if (result.Count < 100)
-                Trace.WriteLine(string.Format("CAE\tExecution: Incorrect (finished too early)"));
+                Trace.WriteLine(string.Format("CAE:\tExecution: Incorrect (finished too early)"));
 
             Assert.IsTrue(result.Count > 100);
 
-            Trace.WriteLine("CAE\tRunning (Ref.)...");
+            Trace.WriteLine("CAE:\tRunning (Ref.)...");
             var referenceResult = TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), ruleNumber, seconds, TestType.RecordOutputToMemory);
 
-            var csComparer = new CellSpaceEqualityComparer();
+            var csComparer = new CellSpaceTools.CellSpaceEqualityComparer();
             
             var equals = result
                 .Zip(referenceResult, (r, rr) => new {Testing = r, Ref = rr})
                 .All(r => csComparer.Equals(r.Testing, r.Ref));
 
-            Trace.WriteLine(string.Format("CAE\tExecution: {0}", equals ? "OK" : "Incorrect"));
+            Trace.WriteLine(string.Format("CAE:\tExecution: {0}", equals ? "OK" : "Incorrect"));
 
             Assert.IsTrue(equals);
 
-            Trace.WriteLine(string.Format("CAE\tSpeedup factor (to Ref.): {0:0.##}", (double) result.Count / referenceResult.Count));
+            Trace.WriteLine(string.Format("CAE:\tSpeedup factor (to Ref.): {0:0.##}", (double) result.Count / referenceResult.Count));
         }
 
         private static List<TCellSpace> TestRunner<TCellSpace>
-            (IRunner<TCellSpace> runner, int ruleNumber, int seconds, TestType testType, bool setThreadAffinity = false) 
+            (IRunner<TCellSpace> runner, int ruleNumber, int seconds, TestType testType) 
             where TCellSpace : ICellSpace, new()
         {                                                   
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));             
 
-            Action threadInit = null;
-
-            if (setThreadAffinity)            
-                threadInit = () => ThreadingTools.SetThreadProcessorAffinity(1);                            
-
-            var connectableOutputObservable = runner.Create(ruleNumber, cts.Token, threadInit);
+            var connectableOutputObservable = runner.Create(ruleNumber, cts.Token);
             var outputObservable = (IObservable<TCellSpace>)connectableOutputObservable;
 
             StreamWriter statsSw = null;
@@ -128,7 +125,7 @@ namespace Pozyx.CAE.Test
                         }
                         if (testType.HasFlag(TestType.TraceStatistics))
                         {
-                            Trace.WriteLine(string.Format("CAE\tT+{0}\tIterations: {1}\tWidth: {2}",
+                            Trace.WriteLine(string.Format("CAE:\tT+{0}\tIterations: {1}\tWidth: {2}",
                                 time, iterations,
                                 bufItems.Any() ? bufItems.Last().Length.ToString(CultureInfo.InvariantCulture) : "N/A"));
                         }
@@ -168,7 +165,7 @@ namespace Pozyx.CAE.Test
 
                 Trace.WriteLine(string.Join(Environment.NewLine, 
                         exceptionString.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                            .Select(l => string.Format("CAE\t{0}", l))));
+                            .Select(l => string.Format("CAE:\t{0}", l))));
 
                 Console.WriteLine(exceptionString);
 

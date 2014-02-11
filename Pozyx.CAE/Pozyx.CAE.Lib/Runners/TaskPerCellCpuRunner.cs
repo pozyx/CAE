@@ -11,19 +11,19 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    // freezing
+    // freezes
 
     public class TaskPerCellCpuRunner : IRunner<BoolArrayCellSpace>
     {
-        public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct, Action threadInit = null)
+        public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
-            var rule = RulesTools.GetBoolArrayForRule(ruleNumber);
+            var rule = RuleTools.GetBoolArrayForRule(ruleNumber);
 
             return Observable.Create<BoolArrayCellSpace>(observer =>
             {
                 var finishCellsCts = new CancellationTokenSource();
 
-                Task.Run(() => Run(observer, rule, ct, finishCellsCts.Token, threadInit), ct)
+                Task.Run(() => Run(observer, rule, ct, finishCellsCts.Token), ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsCanceled)
@@ -43,12 +43,10 @@ namespace Pozyx.CAE.Lib.Runners
             IObserver<BoolArrayCellSpace> observer,
             bool[] rule,
             CancellationToken ct,
-            CancellationToken finishCellsCt,
-            Action threadInit)
+            CancellationToken finishCellsCt)
         {
             var beginManualResetEvent = new ManualResetEventSlim(false, 50);
             var endBarrier = new Barrier(1, _ => beginManualResetEvent.Reset());
-            //var boundsSyncObj = new object();
 
             var cellTasks = new Dictionary<int, Task>();
 
@@ -69,20 +67,17 @@ namespace Pozyx.CAE.Lib.Runners
                 if (faultedTasks.Any())
                     throw new AggregateException(faultedTasks.Select(t => t.Exception));
 
-                //if (!leftMostChangedIndex.HasValue)
-                //{
-                //    observer.OnCompleted();
-                //    break;
-                //}
+                if (!leftMostChangedIndex.HasValue)
+                {
+                    observer.OnCompleted();
+                    break;
+                }
 
                 var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;
                 var nextStepOffset = leftMostChangedIndex.Value - 1;
 
                 nextStep = new BoolArrayCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
-
-                //leftMostChangedIndex = null;
-                //rightMostChangedIndex = null;
 
                 for (var index = nextStepOffset; index < nextStepOffset + nextStepLength; index++)
                 {
@@ -94,21 +89,16 @@ namespace Pozyx.CAE.Lib.Runners
 
                         var cellTask = new Task(() =>
                         {
-                            if (threadInit != null)
-                                threadInit();
+                            while (true)
+                            {
+                                finishCellsCt.ThrowIfCancellationRequested();
 
-                            RunCell(
-                                ref prevStep,
-                                ref nextStep,
-                                indexCaptured,
-                                rule,
-                                //ref leftMostChangedIndex,
-                                //ref rightMostChangedIndex,
-                                finishCellsCt,
-                                beginManualResetEvent,
-                                endBarrier
-                                //,boundsSyncObj
-                                );
+                                beginManualResetEvent.Wait(finishCellsCt);
+
+                                RuleTools.ApplyRule(prevStep, nextStep, indexCaptured, rule);
+
+                                endBarrier.SignalAndWait(finishCellsCt);
+                            }
 
                         }, finishCellsCt, TaskCreationOptions.LongRunning | TaskCreationOptions.AttachedToParent);
 
@@ -123,54 +113,11 @@ namespace Pozyx.CAE.Lib.Runners
                 beginManualResetEvent.Set();
                 endBarrier.SignalAndWait();
 
-                leftMostChangedIndex = nextStepOffset;
-                rightMostChangedIndex = nextStepOffset + nextStepLength - 1;
-
                 observer.OnNext(nextStep);
 
+                CellSpaceTools.GetChangeBounds(prevStep, nextStep, out leftMostChangedIndex, out rightMostChangedIndex);
+
                 prevStep = nextStep;
-            }
-        }
-
-        private static void RunCell(
-            ref BoolArrayCellSpace prevStep,
-            ref BoolArrayCellSpace nextStep,
-            int index,
-            bool[] rule,
-            //ref int? leftMostChangedIndex,
-            //ref int? rightMostChangedIndex,
-            CancellationToken finishCellsCt,
-            ManualResetEventSlim beginManualResetEvent,
-            Barrier endBarrier
-            //,object boundsSyncObj
-            )
-        {
-            while (true)
-            {
-                finishCellsCt.ThrowIfCancellationRequested();
-
-                beginManualResetEvent.Wait(finishCellsCt);
-
-                //var trueOrChanged = 
-                RulesTools.ApplyRule(prevStep, nextStep, index, rule);
-
-                //if (trueOrChanged)
-                //{
-                //    lock (boundsSyncObj)
-                //    {
-                //        if (!leftMostChangedIndex.HasValue || index < leftMostChangedIndex.Value)
-                //            leftMostChangedIndex = index;
-
-                //        if (!rightMostChangedIndex.HasValue || index > rightMostChangedIndex.Value)
-                //            rightMostChangedIndex = index;
-                //    }
-                //}
-                //else
-                //{
-                //    // can be improved: finish task when not needed
-                //}
-
-                endBarrier.SignalAndWait(finishCellsCt);
             }
         }
     }

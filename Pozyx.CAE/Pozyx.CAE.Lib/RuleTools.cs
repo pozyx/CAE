@@ -4,9 +4,9 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib
 {
-    internal static class RulesTools
+    internal static class RuleTools
     {
-        public static bool ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, bool[] rule)
+        public static void ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, bool[] rule)
         {
             var oldLeftValue = prevStep.Get(index - 1);
             var oldValue = prevStep.Get(index);
@@ -15,8 +15,6 @@ namespace Pozyx.CAE.Lib
             var newValue = ApplyRule(oldLeftValue, oldValue, oldRightValue, rule);
 
             nextStep.Set(index, newValue);
-
-            return newValue || oldValue;
         }
 
         private static bool ApplyRule(bool leftValue, bool value, bool rightValue, bool[] rule)
