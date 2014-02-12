@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class TaskPerCellStepCpuRunner : IRunner<BoolArrayCellSpace>
+    public class TaskPerCoreCpuRunner : IRunner<BoolArrayCellSpace>
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
@@ -59,15 +59,29 @@ namespace Pozyx.CAE.Lib.Runners
                 nextStep = new BoolArrayCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                var cellTasksForStep = new List<Task>(nextStepLength);
+                var cellTasksForStep = new List<Task>(Environment.ProcessorCount);               
 
-                for (var index = nextStepOffset; index < nextStepOffset + nextStepLength; index++)
+                var iterationsPerCore = nextStepLength / Environment.ProcessorCount;
+
+                for (var i = 0; i < Environment.ProcessorCount; i++)
                 {
-                    var indexCaptured = index;
+                    var startIndex = nextStepOffset + (i * iterationsPerCore);
+
+                    var endIndex = 
+                        i == Environment.ProcessorCount - 1 ? 
+                        nextStepOffset + nextStepLength :  
+                        startIndex + iterationsPerCore;
+
+                    if (endIndex - startIndex == 0)
+                        continue;
 
                     cellTasksForStep.Add(
-                        Task.Factory.StartNew(() => RuleTools.ApplyRule(prevStep, nextStep, indexCaptured, rule),
-                            TaskCreationOptions.AttachedToParent));
+                         Task.Factory.StartNew(() =>
+                         {
+                             for (var index = startIndex; index < endIndex; index++)
+                                 RuleTools.ApplyRule(prevStep, nextStep, index, rule);
+                         },
+                         TaskCreationOptions.AttachedToParent));
                 }
 
                 Task.WaitAll(cellTasksForStep.ToArray());
@@ -81,3 +95,4 @@ namespace Pozyx.CAE.Lib.Runners
         }
     }
 }
+
