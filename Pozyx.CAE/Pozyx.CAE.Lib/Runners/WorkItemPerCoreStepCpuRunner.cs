@@ -1,7 +1,7 @@
 ﻿using Pozyx.CAE.Lib.CellSpaces;
 using System;
 using System.Collections;
-using System.Linq;
+using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -10,8 +10,10 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class PLinqCpuRunner : IRunner<BoolArrayCellSpace>
+    public abstract class WorkItemPerCoreStepCpuRunner : IRunner<BoolArrayCellSpace>
     {
+        protected abstract void StartWorkItemsAndWait(IList<Action> actions);
+
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
             var rule = RuleTools.GetBoolArrayForRule(ruleNumber);
@@ -33,7 +35,7 @@ namespace Pozyx.CAE.Lib.Runners
             .Publish();
         }
 
-        private static void Run(IObserver<BoolArrayCellSpace> observer, bool[] rule, CancellationToken ct)
+        private void Run(IObserver<BoolArrayCellSpace> observer, bool[] rule, CancellationToken ct)
         {
             var prevStep = new BoolArrayCellSpace();
             prevStep.Initialize(new BitArray(1, true), 0);
@@ -59,10 +61,30 @@ namespace Pozyx.CAE.Lib.Runners
                 nextStep = new BoolArrayCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                ParallelEnumerable
-                    .Range(nextStepOffset, nextStepLength - 1)
-                    .WithCancellation(ct)
-                    .ForAll(index => RuleTools.ApplyRule(prevStep, nextStep, index, rule));
+                var cellActionsForStep = new List<Action>(Environment.ProcessorCount);               
+
+                var iterationsPerCore = nextStepLength / Environment.ProcessorCount;
+
+                for (var i = 0; i < Environment.ProcessorCount; i++)
+                {
+                    var startIndex = nextStepOffset + (i * iterationsPerCore);
+
+                    var endIndex = 
+                        i == Environment.ProcessorCount - 1 ? 
+                        nextStepOffset + nextStepLength :  
+                        startIndex + iterationsPerCore;
+
+                    if (endIndex - startIndex == 0)
+                        continue;
+
+                    cellActionsForStep.Add(() =>
+                    {
+                        for (var index = startIndex; index < endIndex; index++)
+                            RuleTools.ApplyRule(prevStep, nextStep, index, rule);
+                    });
+                }
+
+                StartWorkItemsAndWait(cellActionsForStep);
 
                 observer.OnNext(nextStep);
 
@@ -73,3 +95,4 @@ namespace Pozyx.CAE.Lib.Runners
         }
     }
 }
+

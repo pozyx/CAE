@@ -11,7 +11,9 @@ namespace Pozyx.CAE.Lib.Runners
 {
     public class SingleThreadCpuRunner<TCellSpace> : IRunner<TCellSpace> where TCellSpace : ICellSpace, new()
     {
-        public Action ThreadInit { get; set; }
+        protected virtual void InitThread()
+        {
+        }
 
         public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
@@ -21,9 +23,7 @@ namespace Pozyx.CAE.Lib.Runners
             {
                 Task.Run(() =>
                 {
-                    if (ThreadInit != null)
-                        ThreadInit();
-
+                    InitThread();
                     Run(observer, rule, ct);
                 },
                 ct)

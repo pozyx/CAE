@@ -1,7 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pozyx.CAE.Lib.CellSpaces;
 using Pozyx.CAE.Lib.Runners;
-using Pozyx.CAE.Windows8;
+using Pozyx.CAE.Windows8.Runners;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -34,9 +34,14 @@ namespace Pozyx.CAE.Test
         public void TestSingleThreadCpuRunner()
         {
             // TestType.RecordOutput | 
-            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>()
-                            //{ ThreadInit = () => ThreadingTools.SetThreadProcessorAffinity(1) }
-                      , 110, 20, TestType.TraceStatistics);
+            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestSingleThreadOneCoreCpuRunner()
+        {
+            // TestType.RecordOutput | 
+            TestRunner(new SingleThreadOneCoreCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
@@ -52,31 +57,40 @@ namespace Pozyx.CAE.Test
         }
 
         [TestMethod]
-        public void TestPLinqCpuRunner()
+        public void TestPLinqPerStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new PLinqCpuRunner(), 110, 20);
+            TestRunnerAndCompareWithRef(new PLinqPerStepCpuRunner(), 110, 20);
         }
 
         [TestMethod]
-        public void TestTaskPerCoreCpuRunner()
+        public void TestTaskPerCoreStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 20);
+            TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 20);
+        }
+
+        [TestMethod]
+        public void TestThreadPoolWorkItemPerCoreStepCpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20);
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
         {
-            Trace.WriteLine("CAE:\tRunning...");
+            Trace.WriteLine(string.Format("CAE:\tRunning CA using {0}, rule {1} (for {2} sec.)...", runner.GetType().Name, ruleNumber, seconds));
             // TestType.RecordOutput |
             var result = TestRunner(runner, ruleNumber, seconds, TestType.TraceStatistics | TestType.RecordOutputToMemory);
 
             if (result.Count < 100)
-                Trace.WriteLine(string.Format("CAE:\tExecution: Incorrect (finished too early)"));
+                Trace.WriteLine(string.Format("CAE:\tExecution: Incorrect (finished too early - bug suspected)"));
 
             Assert.IsTrue(result.Count > 100);
 
-            Trace.WriteLine("CAE:\tRunning (Ref.)...");
-            var referenceResult = TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), ruleNumber, seconds, TestType.RecordOutputToMemory);
+            var refRunner = new SingleThreadCpuRunner<BoolArrayCellSpace>();
+
+            Trace.WriteLine(string.Format("CAE:\tRunning Ref. CA using {0}...", refRunner.GetType().Name));
+
+            var referenceResult = TestRunner(refRunner, ruleNumber, seconds, TestType.RecordOutputToMemory);
 
             var csComparer = new CellSpaceTools.CellSpaceEqualityComparer();
             
@@ -84,7 +98,7 @@ namespace Pozyx.CAE.Test
                 .Zip(referenceResult, (r, rr) => new {Testing = r, Ref = rr})
                 .All(r => csComparer.Equals(r.Testing, r.Ref));
 
-            Trace.WriteLine(string.Format("CAE:\tExecution: {0}", equals ? "OK" : "Incorrect"));
+            Trace.WriteLine(string.Format("CAE:\tExecution: {0}", equals ? "OK" : "Incorrect (bug detected)"));
 
             Assert.IsTrue(equals);
 

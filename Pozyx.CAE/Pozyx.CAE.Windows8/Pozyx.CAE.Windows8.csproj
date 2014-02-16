@@ -31,23 +31,22 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ParallelExtensionsExtras">
-      <HintPath>..\packages\MSFT.ParallelExtensionsExtras.1.2.0\lib\ParallelExtensionsExtras.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Runners\SingleThreadOneCoreCpuRunner.cs" />
+    <Compile Include="Runners\ThreadPoolWorkItemPerCoreStepCpuRunner.cs" />
     <Compile Include="ThreadingTools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <None Include="packages.config" />
+    <ProjectReference Include="..\Pozyx.CAE.Lib\Pozyx.CAE.Lib.csproj">
+      <Project>{2097080F-F53C-41E4-88B7-2964BC796CDE}</Project>
+      <Name>Pozyx.CAE.Lib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

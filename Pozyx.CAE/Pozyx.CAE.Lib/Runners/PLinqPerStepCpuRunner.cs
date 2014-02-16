@@ -1,7 +1,7 @@
 ﻿using Pozyx.CAE.Lib.CellSpaces;
 using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class TaskPerCoreCpuRunner : IRunner<BoolArrayCellSpace>
+    public class PLinqPerStepCpuRunner : IRunner<BoolArrayCellSpace>
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
@@ -59,32 +59,10 @@ namespace Pozyx.CAE.Lib.Runners
                 nextStep = new BoolArrayCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
-                var cellTasksForStep = new List<Task>(Environment.ProcessorCount);               
-
-                var iterationsPerCore = nextStepLength / Environment.ProcessorCount;
-
-                for (var i = 0; i < Environment.ProcessorCount; i++)
-                {
-                    var startIndex = nextStepOffset + (i * iterationsPerCore);
-
-                    var endIndex = 
-                        i == Environment.ProcessorCount - 1 ? 
-                        nextStepOffset + nextStepLength :  
-                        startIndex + iterationsPerCore;
-
-                    if (endIndex - startIndex == 0)
-                        continue;
-
-                    cellTasksForStep.Add(
-                         Task.Factory.StartNew(() =>
-                         {
-                             for (var index = startIndex; index < endIndex; index++)
-                                 RuleTools.ApplyRule(prevStep, nextStep, index, rule);
-                         },
-                         TaskCreationOptions.AttachedToParent));
-                }
-
-                Task.WaitAll(cellTasksForStep.ToArray());
+                ParallelEnumerable
+                    .Range(nextStepOffset, nextStepLength - 1)
+                    .WithCancellation(ct)
+                    .ForAll(index => RuleTools.ApplyRule(prevStep, nextStep, index, rule));
 
                 observer.OnNext(nextStep);
 
@@ -95,4 +73,3 @@ namespace Pozyx.CAE.Lib.Runners
         }
     }
 }
-

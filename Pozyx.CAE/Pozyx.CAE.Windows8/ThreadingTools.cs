@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
 namespace Pozyx.CAE.Windows8
 {
-    public static class ThreadingTools
+    static class ThreadingTools
     {        
         /// <summary>
         /// Sets the processor affinity of the current thread.
@@ -44,6 +45,74 @@ namespace Pozyx.CAE.Windows8
             
             // Set the thread's processor affinity
             thread.ProcessorAffinity = new IntPtr(cpuMask);
+        }
+
+        //public static void StartThreadPoolWorkItemsAndWait(IList<Action> actions)
+        //{
+        //    var waitHandles = new WaitHandle[actions.Count];
+
+        //    for (var i = 0; i < actions.Count; i++)
+        //    {
+        //        var manualResetEvent = new ManualResetEventSlim(false);
+
+        //        waitHandles[i] = manualResetEvent.WaitHandle;
+
+        //        var iCaptured = i;
+
+        //        ThreadPool.QueueUserWorkItem(_ =>
+        //        {
+        //            try
+        //            {
+        //                actions[iCaptured]();
+        //            }
+        //            finally
+        //            {
+        //                manualResetEvent.Set();
+        //            } 
+        //        });
+        //    }
+
+        //    WaitHandle.WaitAll(waitHandles);
+        //}
+
+        public static void StartThreadPoolWorkItemsAndWait(IList<Action> actions)
+        {
+            var counter = actions.Count;
+
+            for (var i = 0; i < actions.Count - 1; i++)
+            {
+                var iCaptured = i;
+
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        actions[iCaptured]();
+                    }
+                    finally
+                    {
+                        Interlocked.Decrement(ref counter);
+                    }
+                });
+            }
+
+            try
+            {
+                actions[actions.Count - 1]();
+            }
+            finally
+            {
+                Interlocked.Decrement(ref counter);
+            }
+
+            //SpinWait.SpinUntil(() =>
+            //{
+            //    var counterValue = Volatile.Read(ref counter);
+            //    return counterValue == 0;
+            //});
+
+            while (counter != 0) 
+                Thread.MemoryBarrier();
         }
     }
 }
