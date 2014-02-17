@@ -45,6 +45,7 @@
     <Compile Include="Runners\TaskPerCellCpuRunner.cs" />
     <Compile Include="Runners\SingleThreadCpuRunner.cs" />
     <Compile Include="Runners\TaskPerCellStepCpuRunner.cs" />
+    <Compile Include="Runners\TaskPerCoreCpuRunner.cs" />
     <Compile Include="Runners\WorkItemPerCoreStepCpuRunner.cs" />
     <Compile Include="Runners\TaskPerCoreStepCpuRunner.cs" />
   </ItemGroup>

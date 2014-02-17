@@ -74,6 +74,12 @@ namespace Pozyx.CAE.Test
             TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20);
         }
 
+        [TestMethod]
+        public void TestTaskPerCoreCpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 20);
+        }
+
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
         {
@@ -149,7 +155,7 @@ namespace Pozyx.CAE.Test
                                 time, iterations,
                                 bufItems.Any() ? bufItems.Last().Length.ToString(CultureInfo.InvariantCulture) : "N/A"));
                         }
-                    });
+                    }, ex => { }); // because subsequent subscriptions would not receive error without this
 
                     outputObservable = bufferredObservable.SelectMany(b => b);
                 }
@@ -160,7 +166,9 @@ namespace Pozyx.CAE.Test
                 {
                     outputList = new List<TCellSpace>();
 
-                    outputObservable.Subscribe(item => outputList.Add(item));
+                    outputObservable.Subscribe(
+                        item => outputList.Add(item),
+                        ex => { }); // because subsequent subscriptions would not receive error without this
                 }
 
                 connectableOutputObservable.Connect();

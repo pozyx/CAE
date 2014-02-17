@@ -16,7 +16,8 @@ namespace Pozyx.CAE.TestApp
             //(new RunnerTest()).TestTaskPerCellStepCpuRunner();
             //(new RunnerTest()).TestPLinqPerStepCpuRunner();     
             //(new RunnerTest()).TestTaskPerCoreStepCpuRunner();
-            (new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
+            //(new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
+            (new RunnerTest()).TestTaskPerCoreCpuRunner();
         }        
     }
 }
