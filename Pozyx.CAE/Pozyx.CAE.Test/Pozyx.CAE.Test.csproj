@@ -67,13 +67,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Pozyx.CAE.Lib\Pozyx.CAE.Lib.csproj">
+    <ProjectReference Include="..\Pozyx.CAE.Lib.Portable\Pozyx.CAE.Lib.Portable.csproj">
       <Project>{2097080f-f53c-41e4-88b7-2964bc796cde}</Project>
-      <Name>Pozyx.CAE.Lib</Name>
+      <Name>Pozyx.CAE.Lib.Portable</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Pozyx.CAE.Windows8\Pozyx.CAE.Windows8.csproj">
-      <Project>{807B93DB-5FD0-4EAA-9AC4-6D543778D5BF}</Project>
-      <Name>Pozyx.CAE.Windows8</Name>
+    <ProjectReference Include="..\Pozyx.CAE.Lib.Windows\Pozyx.CAE.Lib.Windows.csproj">
+      <Project>{807b93db-5fd0-4eaa-9ac4-6d543778d5bf}</Project>
+      <Name>Pozyx.CAE.Lib.Windows</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

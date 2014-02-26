@@ -7,8 +7,8 @@
     <ProjectGuid>{807B93DB-5FD0-4EAA-9AC4-6D543778D5BF}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Pozyx.CAE.Windows8</RootNamespace>
-    <AssemblyName>Pozyx.CAE.Windows8</AssemblyName>
+    <RootNamespace>Pozyx.CAE.Lib.Windows</RootNamespace>
+    <AssemblyName>Pozyx.CAE.Lib.Windows</AssemblyName>
     <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -43,9 +43,9 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="..\Pozyx.CAE.Lib\Pozyx.CAE.Lib.csproj">
+    <ProjectReference Include="..\Pozyx.CAE.Lib.Portable\Pozyx.CAE.Lib.Portable.csproj">
       <Project>{2097080F-F53C-41E4-88B7-2964BC796CDE}</Project>
-      <Name>Pozyx.CAE.Lib</Name>
+      <Name>Pozyx.CAE.Lib.Portable</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pozyx.CAE.Lib.CellSpaces;
 using Pozyx.CAE.Lib.Runners;
-using Pozyx.CAE.Windows8.Runners;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

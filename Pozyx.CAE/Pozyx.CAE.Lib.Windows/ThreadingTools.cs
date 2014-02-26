@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace Pozyx.CAE.Windows8
+namespace Pozyx.CAE.Lib
 {
     static class ThreadingTools
     {        

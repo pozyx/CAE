@@ -1,8 +1,7 @@
-﻿using Pozyx.CAE.Lib.Runners;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace Pozyx.CAE.Windows8.Runners
+namespace Pozyx.CAE.Lib.Runners
 {
     public class ThreadPoolWorkItemPerCoreStepCpuRunner : WorkItemPerCoreStepCpuRunner
     {
