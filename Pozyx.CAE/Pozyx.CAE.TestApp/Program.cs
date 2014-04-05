@@ -17,7 +17,11 @@ namespace Pozyx.CAE.TestApp
             //(new RunnerTest()).TestPLinqPerStepCpuRunner();     
             //(new RunnerTest()).TestTaskPerCoreStepCpuRunner();
             //(new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
-            (new RunnerTest()).TestTaskPerCoreCpuRunner();
+            //(new RunnerTest()).TestTaskPerCoreCpuRunner();
+
+            Lib.Windows.Test.RunTest();
+
+            Console.ReadLine();
         }        
     }
 }

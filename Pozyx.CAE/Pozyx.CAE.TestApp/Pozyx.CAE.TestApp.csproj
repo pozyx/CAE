@@ -23,6 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -51,6 +52,10 @@
     <ProjectReference Include="..\Pozyx.CAE.Lib.Portable\Pozyx.CAE.Lib.Portable.csproj">
       <Project>{2097080f-f53c-41e4-88b7-2964bc796cde}</Project>
       <Name>Pozyx.CAE.Lib.Portable</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Pozyx.CAE.Lib.Windows\Pozyx.CAE.Lib.Windows.csproj">
+      <Project>{807b93db-5fd0-4eaa-9ac4-6d543778d5bf}</Project>
+      <Name>Pozyx.CAE.Lib.Windows</Name>
     </ProjectReference>
     <ProjectReference Include="..\Pozyx.CAE.Test\Pozyx.CAE.Test.csproj">
       <Project>{ed7400b3-8f8f-4cf7-9ef1-1f07e4c95d97}</Project>
