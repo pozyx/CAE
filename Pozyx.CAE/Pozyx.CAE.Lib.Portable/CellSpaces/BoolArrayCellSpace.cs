@@ -14,6 +14,12 @@ namespace Pozyx.CAE.Lib.CellSpaces
             get { return _bools.Length; }
         }
 
+        // for optimized algorithm
+        public bool[] Bools
+        {
+            get { return _bools; }
+        }
+
         public void Initialize(BitArray bitArray, int offset)
         {
             _bools = new bool[bitArray.Length];

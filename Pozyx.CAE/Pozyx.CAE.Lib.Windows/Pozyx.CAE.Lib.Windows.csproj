@@ -38,13 +38,14 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Runners\OptimizedSingleThreadOneCoreCpuRunner.cs" />
     <Compile Include="Runners\SingleThreadOneCoreCpuRunner.cs" />
+    <Compile Include="Runners\ThreadPerCellStepCpuSyncedGpuRunner.cs" />
     <Compile Include="Runners\ThreadPoolWorkItemPerCoreStepCpuRunner.cs" />
     <Compile Include="Test.cs" />
     <Compile Include="ThreadingTools.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\Pozyx.CAE.Lib.Portable\Pozyx.CAE.Lib.Portable.csproj">
       <Project>{2097080F-F53C-41E4-88B7-2964BC796CDE}</Project>

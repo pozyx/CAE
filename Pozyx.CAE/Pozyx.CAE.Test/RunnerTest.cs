@@ -22,11 +22,24 @@ namespace Pozyx.CAE.Test
         {
             Initialize(context.TestRunResultsDirectory);           
             context.AddResultFile(_testOutputPath);
+
+            Initialize();
         }
 
         public static void Initialize(string testOutputPath)
         {
-            _testOutputPath = testOutputPath;            
+            _testOutputPath = testOutputPath;
+
+            Initialize();
+        }
+
+        private static void Initialize()
+        {
+            //GCNotification.GCDone += (Action<int>) (gen =>
+            //{
+            //    if (gen == 2)
+            //        Trace.WriteLine(string.Format("CAE:\tGC collect - Gen {0}", gen));
+            //});
         }
 
         [TestMethod]
@@ -41,6 +54,20 @@ namespace Pozyx.CAE.Test
         {
             // TestType.RecordOutput | 
             TestRunner(new SingleThreadOneCoreCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestOptimizedSingleThreadCpuRunner()
+        {
+            // TestType.RecordOutput | 
+            TestRunner(new OptimizedSingleThreadCpuRunner(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestOptimizedSingleThreadOneCoreCpuRunner()
+        {
+            // TestType.RecordOutput | 
+            TestRunner(new OptimizedSingleThreadOneCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
@@ -64,19 +91,28 @@ namespace Pozyx.CAE.Test
         [TestMethod]
         public void TestTaskPerCoreStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 20);
+            //TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 20);
+            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPoolWorkItemPerCoreStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20);
+            //TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20);
+            TestRunner(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestTaskPerCoreCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 20);
+            //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 20);
+            TestRunner(new TaskPerCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestThreadPerCellStepCpuSyncedGpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 20);
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
@@ -91,7 +127,7 @@ namespace Pozyx.CAE.Test
 
             Assert.IsTrue(result.Count > 100);
 
-            var refRunner = new SingleThreadCpuRunner<BoolArrayCellSpace>();
+            var refRunner = new OptimizedSingleThreadCpuRunner();
 
             Trace.WriteLine(string.Format("CAE:\tRunning Ref. CA using {0}...", refRunner.GetType().Name));
 

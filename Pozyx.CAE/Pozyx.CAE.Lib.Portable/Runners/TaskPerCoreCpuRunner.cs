@@ -80,8 +80,7 @@ namespace Pozyx.CAE.Lib.Runners
                             nextStepOffset + nextStepLength :
                             startIndex + iterationsPerCore;
 
-                        for (var index = startIndex; index < endIndex; index++)
-                            RuleTools.ApplyRule(prevStep, nextStep, index, rule);
+                        RuleTools.ApplyRule(prevStep, nextStep, rule, startIndex - nextStepOffset, endIndex - nextStepOffset);
 
                         endBarrier.SignalAndWait(finishCellsCt);
                     }
