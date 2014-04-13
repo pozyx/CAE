@@ -33,10 +33,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CellSpaces\ArrayCellSpace.cs" />
     <Compile Include="CellSpaces\BoolArrayCellSpace.cs" />
     <Compile Include="CellSpaces\BitArrayCellSpace.cs" />
     <Compile Include="CellSpaces\CellSpaceTools.cs" />
     <Compile Include="CellSpaces\ICellSpace.cs" />
+    <Compile Include="CellSpaces\IntArrayCellSpace.cs" />
     <Compile Include="RuleTools.cs" />
     <Compile Include="Runners\IRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

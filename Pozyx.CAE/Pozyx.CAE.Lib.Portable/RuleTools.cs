@@ -5,24 +5,26 @@ using System.Runtime.CompilerServices;
 
 namespace Pozyx.CAE.Lib
 {
-    internal static class RuleTools
+    public static class RuleTools
     {
-        public static void ApplyRule(
+        internal static void ApplyRule(
             BoolArrayCellSpace inputCellSpace, BoolArrayCellSpace outputCellSpace, bool[] rule, int startIndex, int endIndex)
         {
-            for (int index = startIndex, inputIndex = startIndex + outputCellSpace.Offset - inputCellSpace.Offset;
+            var offsetDifference = outputCellSpace.Offset - inputCellSpace.Offset;
+
+            for (int index = startIndex, inputIndex = startIndex + offsetDifference;
                  index < endIndex; 
                  index++, inputIndex++)
             {
-                var oldLeftValue = inputIndex - 1 >= 0 && inputIndex - 1 < inputCellSpace.Length && inputCellSpace.Bools[inputIndex - 1];
-                var oldValue = inputIndex >= 0 && inputIndex < inputCellSpace.Length && inputCellSpace.Bools[inputIndex];
-                var oldRightValue = inputIndex + 1 >= 0 && inputIndex + 1 < inputCellSpace.Length && inputCellSpace.Bools[inputIndex + 1];
+                var oldLeftValue = inputIndex - 1 >= 0 && inputIndex - 1 < inputCellSpace.Length && inputCellSpace.Cells[inputIndex - 1];
+                var oldValue = inputIndex >= 0 && inputIndex < inputCellSpace.Length && inputCellSpace.Cells[inputIndex];
+                var oldRightValue = inputIndex + 1 >= 0 && inputIndex + 1 < inputCellSpace.Length && inputCellSpace.Cells[inputIndex + 1];
 
-                outputCellSpace.Bools[index] = ApplyRule(oldLeftValue, oldValue, oldRightValue, rule);
+                outputCellSpace.Cells[index] = ApplyRule(oldLeftValue, oldValue, oldRightValue, rule);
             }
         }
 
-        public static void ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, bool[] rule)
+        internal static void ApplyRule(ICellSpace prevStep, ICellSpace nextStep, int index, bool[] rule)
         {
             var oldLeftValue = prevStep.Get(index - 1);
             var oldValue = prevStep.Get(index);
@@ -33,7 +35,6 @@ namespace Pozyx.CAE.Lib
             nextStep.Set(index, newValue);
         }
 
-        // TODO: optimize?
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         private static bool ApplyRule(bool leftValue, bool value, bool rightValue, bool[] rule)
         {
@@ -43,7 +44,7 @@ namespace Pozyx.CAE.Lib
                  (rightValue ? 1 : 0)];
         }
 
-        public static bool[] GetBoolArrayForRule(int ruleNumber)
+        internal static bool[] GetBoolArrayForRule(int ruleNumber)
         {
             if (ruleNumber < 0 || ruleNumber > 255)
                 throw new InvalidOperationException("Invalid rule number");
@@ -54,6 +55,18 @@ namespace Pozyx.CAE.Lib
             ((ICollection)bitArray).CopyTo(bools, 0);
 
             return bools;
+        }
+
+        public static byte ConvertBitsToByte(bool[] bits)
+        {
+            if (bits.Length != 8)
+                throw new ArgumentException("8 bits expected", "bits");
+
+            var bitArray = new BitArray(bits);
+            
+            var bytes = new byte[1];
+            ((ICollection)bitArray).CopyTo(bytes, 0);
+            return bytes[0];
         }
     }
 }

@@ -3,13 +3,14 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    public class BoolArrayCellSpace : ArrayCellSpace<bool>
+    public class IntArrayCellSpace : ArrayCellSpace<int>
     {
         public override void Initialize(BitArray bitArray, int offset)
         {
-           base.Initialize(bitArray, offset);
- 
-            ((ICollection)bitArray).CopyTo(Cells, 0);
+            base.Initialize(bitArray, offset);
+
+            for (var i = 0; i < bitArray.Length; i++)
+                Cells[i] = Convert.ToInt32(bitArray[i]);
         }
 
         public override bool Get(int index)
@@ -19,7 +20,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
             return
                 index >= 0 &&
                 index < Cells.Length &&
-                Cells[index];
+                Convert.ToBoolean(Cells[index]);
         }
 
         public override void Set(int index, bool value)
@@ -29,7 +30,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
             if (index < 0 || index >= Cells.Length)
                 throw new Exception("Invalid index to write");
 
-            Cells[index] = value;
+            Cells[index] = Convert.ToInt32(value);
         }
     }
 }

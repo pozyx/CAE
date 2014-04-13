@@ -91,29 +91,37 @@ namespace Pozyx.CAE.Test
         [TestMethod]
         public void TestTaskPerCoreStepCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 20);
-            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
+            //TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 5);
+            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 300, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPoolWorkItemPerCoreStepCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20);
+            //TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 5);
             TestRunner(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestTaskPerCoreCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 20);
+            //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 5);
             TestRunner(new TaskPerCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestCppSingleThreadCpuRunner()
+        {
+            //TestRunnerAndCompareWithRef(new CppSingleThreadCpuRunner(), 110, 5);
+            TestRunner(new CppSingleThreadCpuRunner(), 110, 300,TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedGpuRunner()
         {
-            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 20);
-        }
+            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 5);
+            TestRunner(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 300, TestType.TraceStatistics);
+        }   
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()

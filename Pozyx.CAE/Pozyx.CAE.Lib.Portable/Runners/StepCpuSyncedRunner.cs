@@ -9,17 +9,19 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public abstract class StepCpuSyncedRunner : IRunner<BoolArrayCellSpace>
+    public abstract class StepCpuSyncedRunner<TCellSpace, TCellItem> : IRunner<TCellSpace>
+        where TCellSpace : ArrayCellSpace<TCellItem>, new()
+        where TCellItem : struct
     {
         protected virtual void InitThread()
         {
         }
 
-        public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
+        public IConnectableObservable<TCellSpace> Create(int ruleNumber, CancellationToken ct)
         {
             var rule = RuleTools.GetBoolArrayForRule(ruleNumber);
 
-            return Observable.Create<BoolArrayCellSpace>(observer =>
+            return Observable.Create<TCellSpace>(observer =>
             {
                 Task.Run(() =>
                 {
@@ -41,9 +43,9 @@ namespace Pozyx.CAE.Lib.Runners
             .Publish();
         }
 
-        private void Run(IObserver<BoolArrayCellSpace> observer, bool[] rule, CancellationToken ct)
+        private void Run(IObserver<TCellSpace> observer, bool[] rule, CancellationToken ct)
         {
-            var prevStep = new BoolArrayCellSpace();
+            var prevStep = new TCellSpace();
             prevStep.Initialize(new BitArray(1, true), 0);
             observer.OnNext(prevStep);
 
@@ -63,7 +65,7 @@ namespace Pozyx.CAE.Lib.Runners
                 var nextStepLength = rightMostChangedIndex.Value - leftMostChangedIndex.Value + 3;
                 var nextStepOffset = leftMostChangedIndex.Value - 1;
 
-                var nextStep = new BoolArrayCellSpace();
+                var nextStep = new TCellSpace();
                 nextStep.Initialize(nextStepLength, nextStepOffset);
 
                 RunStep(prevStep, nextStep, rule);
@@ -76,6 +78,6 @@ namespace Pozyx.CAE.Lib.Runners
             }
         }
 
-        protected abstract void RunStep(BoolArrayCellSpace inputCellSpace, BoolArrayCellSpace outputCellSpace, bool[] rule);
+        protected abstract void RunStep(TCellSpace inputCellSpace, TCellSpace outputCellSpace, bool[] rule);
     }
 }

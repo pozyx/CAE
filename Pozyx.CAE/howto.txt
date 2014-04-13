@@ -20,6 +20,6 @@ AMP:
 	Debug => Debug F5
 		
 		Auto+Warp: C++ CPU and GPU
-		Mixed+Warp: .NET CPU and C++ GPU
+		Mixed+Warp: .NET CPU and C++ CPU
 
 	Run => Release CTRL+F5
