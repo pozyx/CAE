@@ -92,7 +92,7 @@ namespace Pozyx.CAE.Test
         public void TestTaskPerCoreStepCpuRunner()
         {
             //TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 5);
-            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 300, TestType.TraceStatistics);
+            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
@@ -106,13 +106,13 @@ namespace Pozyx.CAE.Test
         public void TestTaskPerCoreCpuRunner()
         {
             //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 5);
-            TestRunner(new TaskPerCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new TaskPerCoreCpuRunner(), 110, 300, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestCppSingleThreadCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new CppSingleThreadCpuRunner(), 110, 5);
+            // TestRunnerAndCompareWithRef(new CppSingleThreadCpuRunner(), 110, 5);
             TestRunner(new CppSingleThreadCpuRunner(), 110, 300,TestType.TraceStatistics);
         }
 

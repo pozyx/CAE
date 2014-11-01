@@ -11,7 +11,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
             get { return Cells.Length; }
         }
 
-        // for optimized algorithm
+        // for optimized algorithm - direct access is faster
         public T[] Cells { get; private set; }
 
         public virtual void Initialize(BitArray bitArray, int offset)

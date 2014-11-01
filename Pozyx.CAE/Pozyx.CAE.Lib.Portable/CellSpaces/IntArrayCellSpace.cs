@@ -3,6 +3,8 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
+    // uses int rather than bool because of accelerator restrictions
+    // direct access to array is faster than through Get, Set
     public class IntArrayCellSpace : ArrayCellSpace<int>
     {
         public override void Initialize(BitArray bitArray, int offset)

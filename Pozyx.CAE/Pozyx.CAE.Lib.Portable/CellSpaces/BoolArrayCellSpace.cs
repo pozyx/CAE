@@ -3,6 +3,8 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
+    // faster than BitArrayCellSpace
+    // direct access to array is faster than through Get, Set
     public class BoolArrayCellSpace : ArrayCellSpace<bool>
     {
         public override void Initialize(BitArray bitArray, int offset)

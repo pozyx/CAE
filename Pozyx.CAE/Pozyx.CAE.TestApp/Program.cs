@@ -10,18 +10,35 @@ namespace Pozyx.CAE.TestApp
         {
             RunnerTest.Initialize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Pozyx.CAE"));
 
+            // 47k (20s)
             // (new RunnerTest()).TestSingleThreadCpuRunner();
             // (new RunnerTest()).TestSingleThreadOneCoreCpuRunner();
-            // (new RunnerTest()).TestOptimizedSingleThreadCpuRunner();
+
+            // 76k (20s)
+            // (new RunnerTest()).TestOptimizedSingleThreadCpuRunner(); // REF
             // (new RunnerTest()).TestOptimizedSingleThreadOneCoreCpuRunner();
+
+            // 1k (20s)
             // (new RunnerTest()).TestTaskPerCellCpuRunner();
-            // (new RunnerTest()).TestTaskPerCellStepCpuRunner();
-            // (new RunnerTest()).TestPLinqPerStepCpuRunner();     
+
+            // 11k (20s)
+            //(new RunnerTest()).TestTaskPerCellStepCpuRunner();
+            
+            // 71k (20s)
+            //(new RunnerTest()).TestPLinqPerStepCpuRunner();
+
+            // 118k (20s)
             // (new RunnerTest()).TestTaskPerCoreStepCpuRunner();
             // (new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
+
+            // 125k (20s), 523k (300s)
             // (new RunnerTest()).TestTaskPerCoreCpuRunner();            
+
+            // 82k (20s), 323k (300s)
             // (new RunnerTest()).TestCppSingleThreadCpuRunner();
-            (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
+
+            // 43k (20s), 296k (300s)
+            // (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
         }        
     }
 }

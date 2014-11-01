@@ -3,6 +3,7 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
+    // not used - access is slower than BoolArrayCellSpace
     public class BitArrayCellSpace : ICellSpace
     {        
         private BitArray _bitArray;

@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    // freezes
-
+    // synchronization too heavy
+    // freezes at some point
     public class TaskPerCellCpuRunner : IRunner<BoolArrayCellSpace>
     {
         public IConnectableObservable<BoolArrayCellSpace> Create(int ruleNumber, CancellationToken ct)
@@ -45,7 +45,7 @@ namespace Pozyx.CAE.Lib.Runners
             CancellationToken ct,
             CancellationToken finishCellsCt)
         {
-            var beginManualResetEvent = new ManualResetEventSlim(false, 50);
+            var beginManualResetEvent = new ManualResetEventSlim(false, 50); // ManualResetEvent faster but freezes earlier
             var endBarrier = new Barrier(1, _ => beginManualResetEvent.Reset());
 
             var cellTasks = new Dictionary<int, Task>();
