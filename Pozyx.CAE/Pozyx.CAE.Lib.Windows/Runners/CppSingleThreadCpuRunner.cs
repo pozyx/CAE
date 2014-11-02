@@ -7,8 +7,8 @@ namespace Pozyx.CAE.Lib.Runners
     {
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
         extern unsafe private static void ApplyRuleOneStepSingleThreadCpu(
-            bool* inputCellSpaceBytes, int inputCellSpaceLength,
-            bool* outputCellSpaceBytes, int outputCellSpaceLength,
+            bool* inputCellSpace, int inputCellSpaceLength,
+            bool* outputCellSpace, int outputCellSpaceLength,
             int offsetDifference, byte rule);
 
         unsafe protected override void RunStep(BoolArrayCellSpace inputCellSpace, BoolArrayCellSpace outputCellSpace, bool[] rule)
@@ -17,12 +17,12 @@ namespace Pozyx.CAE.Lib.Runners
 
             var offsetDifference = outputCellSpace.Offset - inputCellSpace.Offset;
 
-            fixed (bool* inputCellSpaceBytes = &inputCellSpace.Cells[0],
-                         outputCellSpaceBytes = &outputCellSpace.Cells[0])
+            fixed (bool* inputCellSpaceBools = &inputCellSpace.Cells[0],
+                         outputCellSpaceBools = &outputCellSpace.Cells[0])
             {
                 ApplyRuleOneStepSingleThreadCpu(
-                    inputCellSpaceBytes, inputCellSpace.Length,
-                    outputCellSpaceBytes, outputCellSpace.Length,
+                    inputCellSpaceBools, inputCellSpace.Length,
+                    outputCellSpaceBools, outputCellSpace.Length,
                     offsetDifference, ruleByte);
             }
         }

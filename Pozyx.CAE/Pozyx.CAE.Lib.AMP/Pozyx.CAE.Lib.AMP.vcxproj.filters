@@ -13,6 +13,9 @@
     <ClCompile Include="ApplyRuleOneStepGpu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ApplyRuleOneStepGpuWithLimitedConcurrency.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">

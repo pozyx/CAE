@@ -163,6 +163,7 @@
   <ItemGroup>
     <ClCompile Include="ApplyRuleOneStepGpu.cpp" />
     <ClCompile Include="ApplyRuleOneStepSingleThreadCpu.cpp" />
+    <ClCompile Include="ApplyRuleOneStepGpuWithLimitedConcurrency.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />

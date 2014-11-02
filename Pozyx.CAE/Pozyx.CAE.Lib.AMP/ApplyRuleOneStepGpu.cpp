@@ -4,13 +4,13 @@
 using namespace concurrency;
 
 extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpu(
-	int* inputCellSpaceBytes, int inputCellSpaceLength,
-	int* outputCellSpaceBytes, int outputCellSpaceLength,
+	int* inputCellSpace, int inputCellSpaceLength,
+	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
 {
-	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceLength, inputCellSpaceBytes);
+	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceLength, inputCellSpace);
 
-	array_view<int, 1> outputCellSpaceArray(outputCellSpaceLength, outputCellSpaceBytes);
+	array_view<int, 1> outputCellSpaceArray(outputCellSpaceLength, outputCellSpace);
 	outputCellSpaceArray.discard_data();
 
 	int intRule = (int)rule;
