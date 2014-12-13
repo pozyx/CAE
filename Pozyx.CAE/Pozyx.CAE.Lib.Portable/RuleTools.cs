@@ -39,9 +39,9 @@ namespace Pozyx.CAE.Lib
         private static bool ApplyRule(bool leftValue, bool value, bool rightValue, bool[] rule)
         {
             return rule[
-                 (leftValue ? 4 : 0) +
-                 (value ? 2 : 0) +
-                 (rightValue ? 1 : 0)];
+                (leftValue ? 4 : 0) |
+                (value ? 2 : 0) |
+                (rightValue ? 1 : 0)];
         }
 
         internal static bool[] GetBoolArrayForRule(int ruleNumber)
