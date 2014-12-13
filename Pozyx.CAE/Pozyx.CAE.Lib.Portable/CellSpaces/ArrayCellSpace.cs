@@ -16,8 +16,8 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         public virtual void Initialize(BitArray bitArray, int offset)
         {
-            Offset = offset;
             Cells = new T[bitArray.Length];
+            Offset = offset;
         }
 
         public void Initialize(int length, int offset)

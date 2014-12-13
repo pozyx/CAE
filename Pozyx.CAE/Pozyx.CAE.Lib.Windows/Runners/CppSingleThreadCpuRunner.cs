@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class CppSingleThreadCpuRunner : StepCpuSyncedRunner<BoolArrayCellSpace, bool>
+    public class CppSingleThreadCpuRunner : StepCpuSyncedRunner<BoolArrayCellSpace>
     {
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
         extern unsafe private static void ApplyRuleOneStepSingleThreadCpu(

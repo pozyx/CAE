@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public abstract class StepCpuSyncedRunner<TCellSpace, TCellItem> : IRunner<TCellSpace>
-        where TCellSpace : ArrayCellSpace<TCellItem>, new()
-        where TCellItem : struct
+    public abstract class StepCpuSyncedRunner<TCellSpace> : IRunner<TCellSpace>
+        where TCellSpace : ICellSpace, new()
     {
         protected virtual void InitThread()
         {

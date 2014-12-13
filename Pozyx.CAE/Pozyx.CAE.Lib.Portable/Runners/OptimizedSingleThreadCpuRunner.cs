@@ -2,7 +2,7 @@
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class OptimizedSingleThreadCpuRunner : StepCpuSyncedRunner<BoolArrayCellSpace, bool>
+    public class OptimizedSingleThreadCpuRunner : StepCpuSyncedRunner<BoolArrayCellSpace>
     {
         protected override void RunStep(BoolArrayCellSpace inputCellSpace, BoolArrayCellSpace outputCellSpace, bool[] rule)
         {

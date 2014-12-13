@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class ThreadPerCellStepCpuSyncedGpuRunner : StepCpuSyncedRunner<IntArrayCellSpace, int>
+    public class ThreadPerCellStepCpuSyncedGpuRunner : StepCpuSyncedRunner<IntArrayCellSpace>
     {
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
         extern unsafe private static void ApplyRuleOneStepGpu(

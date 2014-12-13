@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class ThreadPerMultiCellsStepCpuSyncedGpuRunner : StepCpuSyncedRunner<IntArrayCellSpace, int>
+    public class ThreadPerMultiCellsStepCpuSyncedGpuRunner : StepCpuSyncedRunner<IntArrayCellSpace>
     {
         private const int MaxConcurrency = 384;
 

@@ -1,6 +1,7 @@
 #include "amp.h"
 #include "common.h"
 
+using namespace std;
 using namespace concurrency;
 
 extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
@@ -8,15 +9,17 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
 {
-	// - arrays and array views must be multiply of tile size!!!
-
 	// TODO: experiment with different tile sizes:
 	// - up to 1024
 	// - not smaller than warp size (32)
 	// - multiple of warp size (32)
 	// - occupancy (less can be more)
 
-	static const int TileSize = 1;
+	static const int TileSize = 1024;	
+
+	if ((inputCellSpaceLength % TileSize != 0) || 
+		(outputCellSpaceLength % TileSize != 0))
+		throw std::exception("Cell space lengths must be multiple of tile size");
 
 	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceLength, inputCellSpace);
 
@@ -27,6 +30,8 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
 
 	parallel_for_each(outputCellSpaceArray.extent.tile<TileSize>(), [=](tiled_index<TileSize> tidx) restrict(amp)
 	{
+		// TODO: use tile_static memory!
+
 		int outIndex = tidx.global[0];
 		int inIndex = outIndex + offsetDifference;
 
