@@ -41,7 +41,9 @@ namespace Pozyx.CAE.TestApp
             // (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
 
             // 32k (20s), 207k (300s)
-            // (new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
+            //(new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
+
+            (new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
         }        
     }
 }

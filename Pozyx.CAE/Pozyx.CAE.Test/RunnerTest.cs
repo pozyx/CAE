@@ -128,7 +128,14 @@ namespace Pozyx.CAE.Test
         {
            //TestRunnerAndCompareWithRef(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 20);
            TestRunner(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 300, TestType.TraceStatistics);
-        }   
+        }
+
+        [TestMethod]
+        public void TestThreadPerCellStepCpuSyncedTiledGpuRunner()
+        {
+            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 5);
+            //TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
+        }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
