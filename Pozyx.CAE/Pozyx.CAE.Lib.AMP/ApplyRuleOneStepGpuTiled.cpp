@@ -32,14 +32,38 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuTiled(
 
 	parallel_for_each(outputCellSpaceArray.extent.tile<TileSize>(), [=](tiled_index<TileSize> tidx) restrict(amp)
 	{
-		// TODO: use tile_static memory!
-
 		int outIndex = tidx.global[0];
 		int inIndex = outIndex + offsetDifference;
 
-		bool oldLeftValue = inIndex - 1 >= 0 && inIndex - 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex - 1);
-		bool oldValue = inIndex >= 0 && inIndex < inputCellSpaceLength && inputCellSpaceArray(inIndex);
-		bool oldRightValue = inIndex + 1 >= 0 && inIndex + 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex + 1);
+		tile_static int oldValues[TileSize];
+
+		oldValues[tidx.local[0]] = inIndex >= 0 && inIndex < inputCellSpaceLength && inputCellSpaceArray(inIndex);
+
+		tidx.barrier.wait();
+
+		bool oldLeftValue;
+
+		if (tidx.local[0]- 1 >= 0 && tidx.local[0] - 1 < TileSize)
+		{
+			oldLeftValue = oldValues[tidx.local[0] - 1];
+		}
+		else
+		{
+			oldLeftValue = inIndex - 1 >= 0 && inIndex - 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex - 1);
+		}
+
+		bool oldValue = oldValues[tidx.local[0]];
+
+		bool oldRightValue;
+
+		if (tidx.local[0] + 1 >= 0 && tidx.local[0] + 1 < TileSize)
+		{
+			oldRightValue = oldValues[tidx.local[0] + 1];
+		}
+		else
+		{
+			oldRightValue = inIndex + 1 >= 0 && inIndex + 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex + 1);
+		}
 
 		outputCellSpaceArray[tidx] = APPLY_RULE(intRule, oldLeftValue, oldValue, oldRightValue);
 	});

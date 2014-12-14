@@ -42,12 +42,13 @@ namespace Pozyx.CAE.TestApp
             // GPU performance depends on drivers, now 340.52 (quite ok), 344.75 - 4x slower!
 
             // 33k (20s) - but depends on drivers (it was different 8-43), 296k (300s)
-            (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
+            //(new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
 
             // 21k (20s) - but depends on drivers (it was different ?-33), 207k (300s)
             //(new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
 
-            //(new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
+            // 33k (20s) - same as ThreadPerCellStepCpuSyncedGpuRunner
+            (new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
         }        
     }
 }

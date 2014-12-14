@@ -106,7 +106,7 @@ namespace Pozyx.CAE.Test
         public void TestTaskPerCoreCpuRunner()
         {
             //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 5);
-            TestRunner(new TaskPerCoreCpuRunner(), 110, 300, TestType.TraceStatistics);
+            TestRunner(new TaskPerCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
@@ -133,8 +133,8 @@ namespace Pozyx.CAE.Test
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedTiledGpuRunner()
         {
-            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20);
-            //TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
+            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 5);
+            TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
