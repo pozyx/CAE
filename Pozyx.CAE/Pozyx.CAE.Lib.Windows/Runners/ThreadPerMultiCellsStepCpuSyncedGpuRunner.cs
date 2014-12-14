@@ -1,4 +1,5 @@
-﻿using Pozyx.CAE.Lib.CellSpaces;
+﻿using System;
+using Pozyx.CAE.Lib.CellSpaces;
 using System.Runtime.InteropServices;
 
 namespace Pozyx.CAE.Lib.Runners
@@ -8,7 +9,7 @@ namespace Pozyx.CAE.Lib.Runners
         private const int MaxConcurrency = 384;
 
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
-        extern unsafe private static void ApplyRuleOneStepGpuWithLimitedConcurrency(
+        extern unsafe private static int ApplyRuleOneStepGpuWithLimitedConcurrency(
             int* inputCellSpace, int inputCellSpaceLength,
             int* outputCellSpace, int outputCellSpaceLength,
             int offsetDifference, byte rule, int maxConcurrency);
@@ -19,14 +20,19 @@ namespace Pozyx.CAE.Lib.Runners
 
             var offsetDifference = outputCellSpace.Offset - inputCellSpace.Offset;
 
+            int errorCode;
+
             fixed (int* inputCellSpaceInts = &inputCellSpace.Cells[0],
                         outputCellSpaceInts = &outputCellSpace.Cells[0])
             {
-                ApplyRuleOneStepGpuWithLimitedConcurrency(
+                errorCode = ApplyRuleOneStepGpuWithLimitedConcurrency(
                     inputCellSpaceInts, inputCellSpace.Length,
                     outputCellSpaceInts, outputCellSpace.Length,
                     offsetDifference, ruleByte, MaxConcurrency);
             }
+
+            if (errorCode != 0)
+                throw new InvalidOperationException(string.Format("Error returned from native code. Code: {0}", errorCode));
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Pozyx.CAE.Lib.CellSpaces;
+﻿using System;
+using Pozyx.CAE.Lib.CellSpaces;
 using System.Runtime.InteropServices;
 
 namespace Pozyx.CAE.Lib.Runners
@@ -6,7 +7,7 @@ namespace Pozyx.CAE.Lib.Runners
     public class CppSingleThreadCpuRunner : StepCpuSyncedRunner<BoolArrayCellSpace>
     {
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
-        extern unsafe private static void ApplyRuleOneStepSingleThreadCpu(
+        extern unsafe private static int ApplyRuleOneStepSingleThreadCpu(
             bool* inputCellSpace, int inputCellSpaceLength,
             bool* outputCellSpace, int outputCellSpaceLength,
             int offsetDifference, byte rule);
@@ -17,14 +18,19 @@ namespace Pozyx.CAE.Lib.Runners
 
             var offsetDifference = outputCellSpace.Offset - inputCellSpace.Offset;
 
+            int errorCode;
+
             fixed (bool* inputCellSpaceBools = &inputCellSpace.Cells[0],
                          outputCellSpaceBools = &outputCellSpace.Cells[0])
             {
-                ApplyRuleOneStepSingleThreadCpu(
+                errorCode = ApplyRuleOneStepSingleThreadCpu(
                     inputCellSpaceBools, inputCellSpace.Length,
                     outputCellSpaceBools, outputCellSpace.Length,
                     offsetDifference, ruleByte);
             }
+
+            if (errorCode != 0)
+                throw new InvalidOperationException(string.Format("Error returned from native code. Code: {0}", errorCode));
         }
     }
 }

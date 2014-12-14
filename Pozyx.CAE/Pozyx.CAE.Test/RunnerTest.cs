@@ -113,27 +113,27 @@ namespace Pozyx.CAE.Test
         public void TestCppSingleThreadCpuRunner()
         {
             // TestRunnerAndCompareWithRef(new CppSingleThreadCpuRunner(), 110, 5);
-            TestRunner(new CppSingleThreadCpuRunner(), 110, 300,TestType.TraceStatistics);
+            TestRunner(new CppSingleThreadCpuRunner(), 110, 20,TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedGpuRunner()
         {
             //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 5);
-            TestRunner(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 300, TestType.TraceStatistics);
+            TestRunner(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPerMultiCellsStepCpuSyncedGpuRunner()
         {
            //TestRunnerAndCompareWithRef(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 20);
-           TestRunner(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 300, TestType.TraceStatistics);
+           TestRunner(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedTiledGpuRunner()
         {
-            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 5);
+            TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20);
             //TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
         }
 

@@ -1,10 +1,9 @@
 #include "amp.h"
-#include "common.h"
+#include "common.cpp"
 
-using namespace std;
 using namespace concurrency;
 
-extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
+extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuTiled(
 	int* inputCellSpace, int inputCellSpaceLength,
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
@@ -17,9 +16,12 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
 
 	static const int TileSize = 1024;	
 
-	if ((inputCellSpaceLength % TileSize != 0) || 
+	// Cell space lengths must be multiple of tile size
+	if ((inputCellSpaceLength % TileSize != 0) ||
 		(outputCellSpaceLength % TileSize != 0))
-		throw std::exception("Cell space lengths must be multiple of tile size");
+	{
+		return -1;
+	}
 
 	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceLength, inputCellSpace);
 
@@ -43,4 +45,6 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuTiled(
 	});
 
 	outputCellSpaceArray.synchronize();
+
+	return 0;
 }

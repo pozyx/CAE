@@ -1,10 +1,10 @@
 #include "amp.h"
-#include "common.h"
+#include "common.cpp"
 
 using namespace std;
 using namespace concurrency;
 
-extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuWithLimitedConcurrency(
+extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuWithLimitedConcurrency(
 	int* inputCellSpace, int inputCellSpaceLength,
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule, int maxConcurrency)
@@ -30,8 +30,8 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuWithLimitedCo
 		}
 	}
 
-	array_view<const int, 1> startOutIndexesArray(startOutIndexes.size(), startOutIndexes);
-	array_view<const int, 1> endOutIndexesArray(endOutIndexes.size(), endOutIndexes);
+	array_view<const int, 1> startOutIndexesArray((int) startOutIndexes.size(), startOutIndexes);
+	array_view<const int, 1> endOutIndexesArray((int) endOutIndexes.size(), endOutIndexes);
 
 	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceLength, inputCellSpace);
 
@@ -57,4 +57,6 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpuWithLimitedCo
 	});
 
 	outputCellSpaceArray.synchronize();
+
+	return 0;
 }

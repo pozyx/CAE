@@ -1,9 +1,9 @@
 #include "amp.h"
-#include "common.h"
+#include "common.cpp"
 
 using namespace concurrency;
 
-extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpu(
+extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpu(
 	int* inputCellSpace, int inputCellSpaceLength,
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
@@ -28,4 +28,6 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepGpu(
 	});
 
 	outputCellSpaceArray.synchronize();
+
+	return 0;
 }

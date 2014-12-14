@@ -1,6 +1,6 @@
-#include "common.h"
+#include "common.cpp"
 
-extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepSingleThreadCpu(
+extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepSingleThreadCpu(
 	bool* inputCellSpace, int inputCellSpaceLength,
 	bool* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, unsigned char rule)
@@ -15,4 +15,6 @@ extern "C" __declspec (dllexport) void _stdcall ApplyRuleOneStepSingleThreadCpu(
 
 		*(outputCellSpace + index) = APPLY_RULE(rule, oldLeftValue, oldValue, oldRightValue);
 	}
+
+	return 0;
 }

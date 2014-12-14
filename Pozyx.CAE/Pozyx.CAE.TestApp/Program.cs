@@ -34,16 +34,16 @@ namespace Pozyx.CAE.TestApp
             // 125k (20s), 523k (300s)
             // (new RunnerTest()).TestTaskPerCoreCpuRunner();            
 
-            // 82k (20s), 323k (300s)
-            // (new RunnerTest()).TestCppSingleThreadCpuRunner();
+            // 86k (20s), 323k (300s)
+            //(new RunnerTest()).TestCppSingleThreadCpuRunner();
 
-            // 43k (20s), 296k (300s)
-            // (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
+            // 43k - why now 26 and now 33 and now 8??? (20s), 296k (300s)
+            (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
 
-            // 32k (20s), 207k (300s)
-            //(new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
+            // 32k - why now 17??? (20s), 207k (300s)
+            // (new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
 
-            (new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
+            //(new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
         }        
     }
 }
