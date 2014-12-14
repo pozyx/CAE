@@ -1,4 +1,5 @@
-﻿using Pozyx.CAE.Test;
+﻿using System.Diagnostics;
+using Pozyx.CAE.Test;
 using System;
 using System.IO;
 
@@ -8,6 +9,7 @@ namespace Pozyx.CAE.TestApp
     {
         static void Main()
         {
+            Trace.Listeners.Add(new ConsoleTraceListener());
             RunnerTest.Initialize(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Pozyx.CAE"));
 
             // 47k (20s)
@@ -36,6 +38,8 @@ namespace Pozyx.CAE.TestApp
 
             // 86k (20s), 323k (300s)
             //(new RunnerTest()).TestCppSingleThreadCpuRunner();
+
+            // GPU performance depends on drivers, now 340.52 (quite ok), 344.75 - 4x slower!
 
             // 33k (20s) - but depends on drivers (it was different 8-43), 296k (300s)
             (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
