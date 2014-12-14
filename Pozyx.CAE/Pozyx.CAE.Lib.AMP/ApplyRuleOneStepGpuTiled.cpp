@@ -8,13 +8,7 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuTiled(
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
 {
-	// TODO: experiment with different tile sizes:
-	// - up to 1024
-	// - not smaller than warp size (32)
-	// - multiple of warp size (32)
-	// - occupancy (less can be more)
-
-	static const int TileSize = 1024;	
+	static const int TileSize = 1024;
 
 	// Cell space lengths must be multiple of tile size
 	if ((inputCellSpaceLength % TileSize != 0) ||
@@ -34,35 +28,37 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuTiled(
 	{
 		int outIndex = tidx.global[0];
 		int inIndex = outIndex + offsetDifference;
+		int localIndex = tidx.local[0];
 
 		tile_static int oldValues[TileSize];
 
-		oldValues[tidx.local[0]] = inIndex >= 0 && inIndex < inputCellSpaceLength && inputCellSpaceArray(inIndex);
-
-		tidx.barrier.wait();
+		bool oldValue = inIndex >= 0 && inIndex < inputCellSpaceLength && inputCellSpaceArray(inIndex);
+		oldValues[localIndex] = oldValue;
 
 		bool oldLeftValue;
-
-		if (tidx.local[0]- 1 >= 0 && tidx.local[0] - 1 < TileSize)
-		{
-			oldLeftValue = oldValues[tidx.local[0] - 1];
-		}
-		else
+		bool isOldLeftValueInTile = localIndex - 1 >= 0 && localIndex - 1 < TileSize;
+		if (!isOldLeftValueInTile)
 		{
 			oldLeftValue = inIndex - 1 >= 0 && inIndex - 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex - 1);
 		}
 
-		bool oldValue = oldValues[tidx.local[0]];
-
 		bool oldRightValue;
-
-		if (tidx.local[0] + 1 >= 0 && tidx.local[0] + 1 < TileSize)
-		{
-			oldRightValue = oldValues[tidx.local[0] + 1];
-		}
-		else
+		bool isOldRightValueInTile = localIndex + 1 >= 0 && localIndex + 1 < TileSize;
+		if (!isOldRightValueInTile)
 		{
 			oldRightValue = inIndex + 1 >= 0 && inIndex + 1 < inputCellSpaceLength && inputCellSpaceArray(inIndex + 1);
+		}
+
+		tidx.barrier.wait();
+
+		if (isOldLeftValueInTile)
+		{
+			oldLeftValue = oldValues[localIndex - 1];
+		}
+
+		if (isOldRightValueInTile)
+		{
+			oldRightValue = oldValues[localIndex + 1];
 		}
 
 		outputCellSpaceArray[tidx] = APPLY_RULE(intRule, oldLeftValue, oldValue, oldRightValue);
