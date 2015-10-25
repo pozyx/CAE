@@ -23,5 +23,3 @@ AMP:
 		Mixed+Warp: .NET CPU and C++ CPU
 
 	Run => Release CTRL+F5
-
-	test
