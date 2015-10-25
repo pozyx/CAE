@@ -16,39 +16,39 @@ namespace Pozyx.CAE.TestApp
             // (new RunnerTest()).TestSingleThreadCpuRunner();
             // (new RunnerTest()).TestSingleThreadOneCoreCpuRunner();
 
-            // 76k (20s)
+            // 72k (20s)
             // (new RunnerTest()).TestOptimizedSingleThreadCpuRunner(); // REF
             // (new RunnerTest()).TestOptimizedSingleThreadOneCoreCpuRunner();
 
-            // 1k (20s)
+            // 1.2k (20s)
             // (new RunnerTest()).TestTaskPerCellCpuRunner();
 
             // 11k (20s)
-            //(new RunnerTest()).TestTaskPerCellStepCpuRunner();
-            
+            // (new RunnerTest()).TestTaskPerCellStepCpuRunner();
+
             // 71k (20s)
-            //(new RunnerTest()).TestPLinqPerStepCpuRunner();
+            // (new RunnerTest()).TestPLinqPerStepCpuRunner();
 
-            // 118k (20s)
+            // 115k (20s)
             // (new RunnerTest()).TestTaskPerCoreStepCpuRunner();
-            // (new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
+            //(new RunnerTest()).TestThreadPoolWorkItemPerCoreStepCpuRunner();
 
-            // 125k (20s), 523k (300s)
+            // 115k (20s)
             // (new RunnerTest()).TestTaskPerCoreCpuRunner();            
 
-            // 86k (20s), 323k (300s)
+            // 86k (20s)
             //(new RunnerTest()).TestCppSingleThreadCpuRunner();
 
-            // GPU performance depends on drivers, now 340.52 (quite ok), 344.75 - 4x slower!
+            // GPU performance depends on drivers, some are like 4x slower!
 
-            // 33k (20s) - but depends on drivers (it was different 8-43), 296k (300s)
+            // 40k (20s)
             //(new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuRunner();
 
-            // 21k (20s) - but depends on drivers (it was different ?-33), 207k (300s)
+            // 34k (20s)
             //(new RunnerTest()).TestThreadPerMultiCellsStepCpuSyncedGpuRunner();
 
-            // 33k (20s) - same as ThreadPerCellStepCpuSyncedGpuRunner
+            // 48k (20s)
             (new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
-        }        
+        }
     }
 }
