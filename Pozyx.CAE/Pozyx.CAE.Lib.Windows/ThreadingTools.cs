@@ -17,9 +17,9 @@ namespace Pozyx.CAE.Lib
         public static void SetThreadProcessorAffinity(params int[] cpus)
         {
             if (cpus == null)
-                throw new ArgumentNullException("cpus");
+                throw new ArgumentNullException(nameof(cpus));
             if (cpus.Length == 0)
-                throw new ArgumentException("You must specify at least one CPU.", "cpus");            
+                throw new ArgumentException("You must specify at least one CPU.", nameof(cpus));            
 
             // Supports up to 64 processors
             long cpuMask = 0;

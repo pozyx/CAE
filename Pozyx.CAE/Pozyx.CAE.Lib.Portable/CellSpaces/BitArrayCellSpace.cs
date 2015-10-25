@@ -10,10 +10,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         public int Offset { get; private set; }
 
-        public int Length
-        {
-            get { return _bitArray.Length; }
-        }
+        public int Length => _bitArray.Length;
 
         public void Initialize(BitArray bitArray, int offset)
         {

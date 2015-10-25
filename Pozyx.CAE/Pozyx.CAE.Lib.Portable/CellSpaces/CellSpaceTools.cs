@@ -13,7 +13,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
                 spaceStart = cellSpace.Offset;
 
             if (spaceStart > cellSpace.Offset)
-                throw new ArgumentException("Space start cannot be higher than offset.", "spaceStart");
+                throw new ArgumentException("Space start cannot be higher than offset.", nameof(spaceStart));
 
             using (var sw = new StringWriter())
             {

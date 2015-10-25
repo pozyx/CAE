@@ -1,6 +1,6 @@
 ﻿using System;
-using Pozyx.CAE.Lib.CellSpaces;
 using System.Runtime.InteropServices;
+using Pozyx.CAE.Lib.CellSpaces;
 
 namespace Pozyx.CAE.Lib.Runners
 {
@@ -30,7 +30,7 @@ namespace Pozyx.CAE.Lib.Runners
             }
 
             if (errorCode != 0)
-                throw new InvalidOperationException(string.Format("Error returned from native code. Code: {0}", errorCode));
+                throw new InvalidOperationException($"Error returned from native code. Code: {errorCode}");
         }
     }
 }

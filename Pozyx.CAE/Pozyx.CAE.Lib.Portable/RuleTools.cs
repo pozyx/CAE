@@ -1,7 +1,7 @@
-﻿using Pozyx.CAE.Lib.CellSpaces;
-using System;
+﻿using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
+using Pozyx.CAE.Lib.CellSpaces;
 
 namespace Pozyx.CAE.Lib
 {
@@ -60,7 +60,7 @@ namespace Pozyx.CAE.Lib
         public static byte ConvertBitsToByte(bool[] bits)
         {
             if (bits.Length != 8)
-                throw new ArgumentException("8 bits expected", "bits");
+                throw new ArgumentException("8 bits expected", nameof(bits));
 
             var bitArray = new BitArray(bits);
             

@@ -1,7 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Pozyx.CAE.Lib.CellSpaces;
-using Pozyx.CAE.Lib.Runners;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -9,6 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Pozyx.CAE.Lib.CellSpaces;
+using Pozyx.CAE.Lib.Runners;
 
 namespace Pozyx.CAE.Test
 {
@@ -140,18 +140,18 @@ namespace Pozyx.CAE.Test
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
             where TCellSpace : ICellSpace, new()
         {
-            Trace.WriteLine(string.Format("CAE:\tRunning CA using {0}, rule {1} (for {2} sec.)...", runner.GetType().Name, ruleNumber, seconds));
+            Trace.WriteLine($"CAE:\tRunning CA using {runner.GetType().Name}, rule {ruleNumber} (for {seconds} sec.)...");
             // TestType.RecordOutput |
             var result = TestRunner(runner, ruleNumber, seconds, TestType.TraceStatistics | TestType.RecordOutputToMemory);
 
             if (result.Count < 100)
-                Trace.WriteLine(string.Format("CAE:\tExecution: Incorrect (finished too early - bug suspected)"));
+                Trace.WriteLine("CAE:\tExecution: Incorrect (finished too early - bug suspected)");
 
             Assert.IsTrue(result.Count > 100);
 
             var refRunner = new OptimizedSingleThreadCpuRunner();
 
-            Trace.WriteLine(string.Format("CAE:\tRunning Ref. CA using {0}...", refRunner.GetType().Name));
+            Trace.WriteLine($"CAE:\tRunning Ref. CA using {refRunner.GetType().Name}...");
 
             var referenceResult = TestRunner(refRunner, ruleNumber, seconds, TestType.RecordOutputToMemory);
 
@@ -161,11 +161,11 @@ namespace Pozyx.CAE.Test
                 .Zip(referenceResult, (r, rr) => new {Testing = r, Ref = rr})
                 .All(r => csComparer.Equals(r.Testing, r.Ref));
 
-            Trace.WriteLine(string.Format("CAE:\tExecution: {0}", equals ? "OK" : "Incorrect (bug detected)"));
+            Trace.WriteLine($"CAE:\tExecution: {(@equals ? "OK" : "Incorrect (bug detected)")}");
 
             Assert.IsTrue(equals);
 
-            Trace.WriteLine(string.Format("CAE:\tSpeedup factor (to Ref.): {0:0.##}", (double) result.Count / referenceResult.Count));
+            Trace.WriteLine($"CAE:\tSpeedup factor (to Ref.): {(double) result.Count/referenceResult.Count:0.##}");
         }
 
         private static List<TCellSpace> TestRunner<TCellSpace>
@@ -208,9 +208,8 @@ namespace Pozyx.CAE.Test
                         }
                         if (testType.HasFlag(TestType.TraceStatistics))
                         {
-                            Trace.WriteLine(string.Format("CAE:\tT+{0}\tIterations: {1}\tWidth: {2}",
-                                time, iterations,
-                                bufItems.Any() ? bufItems.Last().Length.ToString(CultureInfo.InvariantCulture) : "N/A"));
+                            Trace.WriteLine(
+                                $"CAE:\tT+{time}\tIterations: {iterations}\tWidth: {(bufItems.Any() ? bufItems.Last().Length.ToString(CultureInfo.InvariantCulture) : "N/A")}");
                         }
                     }, ex => { }); // because subsequent subscriptions would not receive error without this
 
@@ -250,7 +249,7 @@ namespace Pozyx.CAE.Test
 
                 Trace.WriteLine(string.Join(Environment.NewLine, 
                         exceptionString.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
-                            .Select(l => string.Format("CAE:\t{0}", l))));
+                            .Select(l => $"CAE:\t{l}")));
 
                 Console.WriteLine(exceptionString);
 
@@ -271,7 +270,7 @@ namespace Pozyx.CAE.Test
 
             return Path.Combine(
                 _testOutputPath,
-                string.Format("Test output for {0} rule {1}.txt", runner.GetType().Name, ruleNumber));
+                $"Test output for {runner.GetType().Name} rule {ruleNumber}.txt");
         }
 
         private static string GetTestStatsFileName<TCellSpace>
@@ -282,7 +281,7 @@ namespace Pozyx.CAE.Test
 
             return Path.Combine(
                 _testOutputPath,
-                string.Format("Test stats for {0} rule {1}.csv", runner.GetType().Name, ruleNumber));
+                $"Test stats for {runner.GetType().Name} rule {ruleNumber}.csv");
         }        
 
         [Flags]

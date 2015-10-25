@@ -31,7 +31,7 @@ namespace Pozyx.CAE.Test
                 if (GC.GetGeneration(this) >= _mGeneration)
                 {
                     var temp = Volatile.Read(ref _sGCDone);
-                    if (temp != null) temp(_mGeneration);
+                    temp?.Invoke(_mGeneration);
                 }
 
                 // Keep reporting notifications if there is at least one delegate

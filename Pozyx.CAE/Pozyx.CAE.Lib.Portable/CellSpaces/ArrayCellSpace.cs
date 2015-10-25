@@ -6,10 +6,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
     {
         public int Offset { get; private set; }
 
-        public int Length
-        {
-            get { return Cells.Length; }
-        }
+        public int Length => Cells.Length;
 
         // for optimized algorithm - direct access is faster
         public T[] Cells { get; private set; }
