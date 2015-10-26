@@ -18,7 +18,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Pozyx.CAE.Lib.AMP", "Pozyx.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{381FF759-5BC3-430B-8C20-9A8D0B50AD66}"
 	ProjectSection(SolutionItems) = preProject
-		howto.txt = howto.txt
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Global
