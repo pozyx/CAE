@@ -34,6 +34,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CellSpaces\PackedIntArrayCellSpace.cs" />
     <Compile Include="CellSpaces\PaddedIntArrayCellSpace.cs" />
     <Compile Include="CellSpaces\PaddedArrayCellSpace.cs" />
     <Compile Include="CellSpaces\ArrayCellSpace.cs" />

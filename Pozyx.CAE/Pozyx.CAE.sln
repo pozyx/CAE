@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pozyx.CAE.Lib.Portable", "Pozyx.CAE.Lib.Portable\Pozyx.CAE.Lib.Portable.csproj", "{2097080F-F53C-41E4-88B7-2964BC796CDE}"
 EndProject
@@ -19,6 +19,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{381FF759-5BC3-430B-8C20-9A8D0B50AD66}"
 	ProjectSection(SolutionItems) = preProject
 		..\README.md = ..\README.md
+		TODO.txt = TODO.txt
 	EndProjectSection
 EndProject
 Global
