@@ -37,7 +37,7 @@ namespace Pozyx.CAE.TestApp
             // (new RunnerTest()).TestTaskPerCoreCpuRunner();            
 
             // 86k (20s)
-            // (new RunnerTest()).TestCppSingleThreadCpuRunner();
+            //(new RunnerTest()).TestCppSingleThreadCpuRunner();
 
             // GPU performance depends on drivers, some are like 4x slower!
 
@@ -51,7 +51,10 @@ namespace Pozyx.CAE.TestApp
             // (new RunnerTest()).TestThreadPerCellStepCpuSyncedTiledGpuRunner();
 
             // 38k (20s)
-            (new RunnerTest()).TestPackedIntSingleThreadCpuRunner();
+            //(new RunnerTest()).TestPackedIntSingleThreadCpuRunner();
+
+            // 77k (20s)
+            (new RunnerTest()).TestCppSingleThreadCpuPackedIntRunner(); 
         }
     }
 }
