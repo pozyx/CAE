@@ -8,6 +8,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Pozyx.CAE.Lib.CellSpaces;
+using Pozyx.CAE.Lib.Portable.CellSpaces;
 using Pozyx.CAE.Lib.Runners;
 
 namespace Pozyx.CAE.Test
@@ -135,6 +136,13 @@ namespace Pozyx.CAE.Test
         {
             //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 5);
             TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
+        }
+
+        [TestMethod]
+        public void TestPackedIntSingleThreadCpuRunner()
+        {
+            //TestRunnerAndCompareWithRef(new SingleThreadCpuRunner<PackedIntArrayCellSpace>(), 110, 5);
+            TestRunner(new SingleThreadCpuRunner<PackedIntArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)

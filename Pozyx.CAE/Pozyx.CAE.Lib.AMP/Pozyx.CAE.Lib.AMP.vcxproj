@@ -150,6 +150,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;POZYXCAELIBAMP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -160,6 +161,9 @@
     <PostBuildEvent>
       <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
     </PostBuildEvent>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ApplyRuleOneStepGpu.cpp" />
