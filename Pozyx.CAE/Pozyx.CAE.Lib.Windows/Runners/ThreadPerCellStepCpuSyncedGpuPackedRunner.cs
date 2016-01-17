@@ -4,10 +4,10 @@ using Pozyx.CAE.Lib.Portable.CellSpaces;
 
 namespace Pozyx.CAE.Lib.Runners
 {
-    public class CppSingleThreadCpuPackedIntRunner : StepCpuSyncedRunner<PackedIntArrayCellSpace>
+    public class ThreadPerCellStepCpuSyncedGpuPackedRunner : StepCpuSyncedRunner<PackedIntArrayCellSpace>
     {
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
-        extern unsafe private static int ApplyRuleOneStepSingleThreadWithCpuPacked(
+        extern unsafe private static int ApplyRuleOneStepGpuPacked(
             int* inputCellSpace, int inputCellSpaceLength,
             int* outputCellSpace, int outputCellSpaceLength,
             int offsetDifference, byte rule);
@@ -20,12 +20,13 @@ namespace Pozyx.CAE.Lib.Runners
 
             int errorCode;
 
-            fixed (int* inputCellSpaceBools = &inputCellSpace.PackedCells[0],
-                        outputCellSpaceBools = &outputCellSpace.PackedCells[0])
+            fixed (int* inputCellSpaceInts = &inputCellSpace.PackedCells[0],
+                        outputCellSpaceInts = &outputCellSpace.PackedCells[0])
             {
-                errorCode = ApplyRuleOneStepSingleThreadWithCpuPacked(
-                    inputCellSpaceBools, inputCellSpace.Length,
-                    outputCellSpaceBools, outputCellSpace.Length,
+                errorCode =
+                    ApplyRuleOneStepGpuPacked(
+                    inputCellSpaceInts, inputCellSpace.Length,
+                    outputCellSpaceInts, outputCellSpace.Length,
                     offsetDifference, ruleByte);
             }
 

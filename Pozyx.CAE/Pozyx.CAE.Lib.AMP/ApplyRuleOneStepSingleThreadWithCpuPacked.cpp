@@ -1,9 +1,6 @@
 #include "common.cpp"
 
-#define ARRAY_INDEX(index) ((index) / sizeof(int))
-#define INT_INDEX(index) ((index) % sizeof(int))
-
-extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepSingleThreadWithCpuPackedInt(
+extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepSingleThreadWithCpuPacked(
 		int* inputCellSpace, int inputCellSpaceLength,
 		int* outputCellSpace, int outputCellSpaceLength,
 		int offsetDifference, unsigned char rule)

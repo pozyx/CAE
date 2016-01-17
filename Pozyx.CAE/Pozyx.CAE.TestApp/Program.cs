@@ -54,7 +54,10 @@ namespace Pozyx.CAE.TestApp
             //(new RunnerTest()).TestPackedIntSingleThreadCpuRunner();
 
             // 77k (20s)
-            (new RunnerTest()).TestCppSingleThreadCpuPackedIntRunner(); 
+            //(new RunnerTest()).TestCppSingleThreadCpuPackedIntRunner();
+
+            // 44k (20s)
+            (new RunnerTest()).TestThreadPerCellStepCpuSyncedGpuPackedRunner();
         }
     }
 }

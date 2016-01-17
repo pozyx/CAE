@@ -19,7 +19,10 @@
     <ClCompile Include="ApplyRuleOneStepGpuTiled.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ApplyRuleOneStepSingleThreadWithCpuPackedInt.cpp">
+    <ClCompile Include="ApplyRuleOneStepSingleThreadWithCpuPacked.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ApplyRuleOneStepGpuPacked.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

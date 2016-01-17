@@ -4,9 +4,6 @@ using Pozyx.CAE.Lib.CellSpaces;
 
 namespace Pozyx.CAE.Lib.Portable.CellSpaces
 {
-    // TODO: use with:
-    // 3. C++ GPU runner (limit concurrency to sizeof(int))
-    // 4. tiled gpu runner (create padded cellspace variation)
     public class PackedIntArrayCellSpace : ICellSpace
     {
         public int[] PackedCells { get; private set; }
