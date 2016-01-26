@@ -2,7 +2,8 @@
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    // cell space which is backed by array of which length is multiple of tile size 
+    // direct access to array is faster than through Get, Set
+    // backed by array of which length is multiple of tile size 
     //   (requirement for tiled GPU execution)
     public abstract class PaddedArrayCellSpace<T> : ICellSpace where T : struct
     {
@@ -18,9 +19,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         public virtual void Initialize(BitArray bitArray, int offset)
         {
-            Length = bitArray.Length;
-            Cells = new T[GetPaddedLength(Length)];
-            Offset = offset;
+            Initialize(bitArray.Length, offset);
         }
 
         public void Initialize(int length, int offset)

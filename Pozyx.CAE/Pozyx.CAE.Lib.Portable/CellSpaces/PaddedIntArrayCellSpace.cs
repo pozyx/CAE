@@ -5,7 +5,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
 {
     // uses int rather than bool because of accelerator restrictions
     // direct access to array is faster than through Get, Set
-    // cell space which is backed by array of which length is multiple of tile size 
+    // backed by array of which length is multiple of tile size 
     //   (requirement for tiled GPU execution)
     public class PaddedIntArrayCellSpace : PaddedArrayCellSpace<int>
     {

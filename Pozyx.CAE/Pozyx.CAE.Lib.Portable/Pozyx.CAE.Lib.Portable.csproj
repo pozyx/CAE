@@ -43,6 +43,7 @@
     <Compile Include="CellSpaces\CellSpaceTools.cs" />
     <Compile Include="CellSpaces\ICellSpace.cs" />
     <Compile Include="CellSpaces\IntArrayCellSpace.cs" />
+    <Compile Include="CellSpaces\PaddedPackedIntArrayCellSpace.cs" />
     <Compile Include="RuleTools.cs" />
     <Compile Include="Runners\IRunner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

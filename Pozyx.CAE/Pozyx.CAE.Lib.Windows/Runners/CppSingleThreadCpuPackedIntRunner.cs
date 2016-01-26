@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using Pozyx.CAE.Lib.Portable.CellSpaces;
+using Pozyx.CAE.Lib.CellSpaces;
 
 namespace Pozyx.CAE.Lib.Runners
 {

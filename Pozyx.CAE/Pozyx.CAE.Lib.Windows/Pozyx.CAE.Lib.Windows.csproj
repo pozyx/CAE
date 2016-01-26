@@ -43,6 +43,7 @@
     <Compile Include="Runners\OptimizedSingleThreadOneCoreCpuRunner.cs" />
     <Compile Include="Runners\SingleThreadOneCoreCpuRunner.cs" />
     <Compile Include="Runners\ThreadPerCellStepCpuSyncedGpuPackedRunner.cs" />
+    <Compile Include="Runners\ThreadPerCellStepCpuSyncedTiledGpuPackedRunner.cs" />
     <Compile Include="Runners\ThreadPerCellStepCpuSyncedTiledGpuRunner.cs" />
     <Compile Include="Runners\ThreadPerMultiCellsStepCpuSyncedGpuRunner.cs" />
     <Compile Include="Runners\ThreadPerCellStepCpuSyncedGpuRunner.cs" />
