@@ -4,7 +4,7 @@
 using namespace concurrency;
 
 // TODO: does not work
-// - fix sizeof(int)
+// - try after sizeof(int) fix
 // - try comment out (simplified without tiling)
 // - then uncomment
 
@@ -29,9 +29,9 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuPackedTiled(
 
 	int intRule = (int)rule;
 
-	int arrayOffsetDifference = offsetDifference / sizeof(int);
-	int inputCellSpaceLength = inputCellSpaceArrayLength * sizeof(int);
-	int outputCellSpaceLength = outputCellSpaceArrayLength * sizeof(int);
+	int arrayOffsetDifference = offsetDifference / BITS_IN_INT;
+	int inputCellSpaceLength = inputCellSpaceArrayLength * BITS_IN_INT;
+	int outputCellSpaceLength = outputCellSpaceArrayLength * BITS_IN_INT;
 
 	parallel_for_each(outputCellSpaceArray.extent.tile<TileSize>(), [=](tiled_index<TileSize> tidx) restrict(amp)
 	{
@@ -46,9 +46,9 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuPackedTiled(
 
 		tidx.barrier.wait();
 
-		for (int outIntIndex = 0; outIntIndex < sizeof(int); outIntIndex++)
+		for (int outIntIndex = 0; outIntIndex < BITS_IN_INT; outIntIndex++)
 		{
-			int outIndex = (outArrayIndex * sizeof(int)) + outIntIndex;
+			int outIndex = (outArrayIndex * BITS_IN_INT) + outIntIndex;
 			int inIndex = outIndex + offsetDifference;			
 
 			int oldLeftArrayIndex = ARRAY_INDEX(inIndex - 1);

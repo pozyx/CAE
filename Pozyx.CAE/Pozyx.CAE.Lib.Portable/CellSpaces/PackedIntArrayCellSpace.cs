@@ -3,9 +3,11 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    // one int covers sizeof(int) cells
+    // one int covers 32 cells
     public class PackedIntArrayCellSpace : ICellSpace
     {
+        private const int BitsInInt = sizeof(int) * 8;
+
         public int[] PackedCells { get; private set; }
 
         public int Offset { get; private set; }
@@ -69,13 +71,13 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         private int GetPackedLength(int length)
         {
-            return (int) Math.Ceiling((double) length / sizeof(int));
+            return (int) Math.Ceiling((double) length / BitsInInt);
         }
 
         private void GetPackedIndex(int index, out int arrayIndex, out int intIndex)
         {
-            arrayIndex = index / sizeof(int);
-            intIndex = index % sizeof(int);
+            arrayIndex = index / BitsInInt;
+            intIndex = index % BitsInInt;
         } 
     }
 }

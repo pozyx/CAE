@@ -8,8 +8,8 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuPacked(
 	int* outputCellSpace, int outputCellSpaceLength,
 	int offsetDifference, byte rule)
 {
-	int inputCellSpaceArrayLength = (int) ceil((double)inputCellSpaceLength / sizeof(int));
-	int outputCellSpaceArrayLength = (int) ceil((double)outputCellSpaceLength / sizeof(int));
+	int inputCellSpaceArrayLength = (int) ceil((double)inputCellSpaceLength / BITS_IN_INT);
+	int outputCellSpaceArrayLength = (int) ceil((double)outputCellSpaceLength / BITS_IN_INT);
 
 	array_view<const int, 1> inputCellSpaceArray(inputCellSpaceArrayLength, inputCellSpace);
 
@@ -22,9 +22,9 @@ extern "C" __declspec (dllexport) int _stdcall ApplyRuleOneStepGpuPacked(
 	{
 		int outArrayIndex = idx[0];
 
-		for (int outIntIndex = 0; outIntIndex < sizeof(int); outIntIndex++)
+		for (int outIntIndex = 0; outIntIndex < BITS_IN_INT; outIntIndex++)
 		{
-			int outIndex = (outArrayIndex * sizeof(int)) + outIntIndex;
+			int outIndex = (outArrayIndex * BITS_IN_INT) + outIntIndex;
 			int inIndex = outIndex + offsetDifference;
 
 			bool oldLeftValue = inIndex - 1 >= 0 && inIndex - 1 < inputCellSpaceLength && CHECK_BIT(inputCellSpaceArray(ARRAY_INDEX(inIndex - 1)), INT_INDEX(inIndex - 1));

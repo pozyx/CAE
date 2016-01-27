@@ -3,11 +3,13 @@ using System.Collections;
 
 namespace Pozyx.CAE.Lib.CellSpaces
 {
-    // one int covers sizeof(int) cells
+    // one int covers 32 cells
     // backed by array of which length is multiple of tile size 
     //   (requirement for tiled GPU execution)
     public class PaddedPackedIntArrayCellSpace : ICellSpace
     {
+        private const int BitsInInt = sizeof(int) * 8;
+
         // set to multiple of tile size
         private const int PadSize = 1024;
 
@@ -74,7 +76,7 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         private int GetPaddedPackedLength(int length)
         {            
-            var intLength = (int)Math.Ceiling((double)length / sizeof(int));
+            var intLength = (int)Math.Ceiling((double)length / BitsInInt);
             
             return intLength % PadSize == 0 ?
                intLength :
@@ -83,8 +85,8 @@ namespace Pozyx.CAE.Lib.CellSpaces
 
         private void GetPackedIndex(int index, out int arrayIndex, out int intIndex)
         {
-            arrayIndex = index / sizeof(int);
-            intIndex = index % sizeof(int);
+            arrayIndex = index / BitsInInt;
+            intIndex = index % BitsInInt;
         }
     }
 }
