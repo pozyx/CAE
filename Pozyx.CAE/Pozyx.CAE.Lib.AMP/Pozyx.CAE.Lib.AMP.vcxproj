@@ -168,6 +168,7 @@
   <ItemGroup>
     <ClCompile Include="ApplyRuleOneStepGpu.cpp" />
     <ClCompile Include="ApplyRuleOneStepGpuPacked.cpp" />
+    <ClCompile Include="ApplyRuleOneStepGpuPackedTiled.cpp" />
     <ClCompile Include="ApplyRuleOneStepSingleThreadCpu.cpp" />
     <ClCompile Include="ApplyRuleOneStepGpuWithLimitedConcurrency.cpp" />
     <ClCompile Include="ApplyRuleOneStepGpuTiled.cpp" />

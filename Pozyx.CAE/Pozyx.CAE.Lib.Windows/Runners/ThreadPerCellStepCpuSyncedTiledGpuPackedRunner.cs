@@ -5,12 +5,11 @@ using Pozyx.CAE.Lib.CellSpaces;
 namespace Pozyx.CAE.Lib.Runners
 {
     public class ThreadPerCellStepCpuSyncedTiledGpuPackedRunner : StepCpuSyncedRunner<PaddedPackedIntArrayCellSpace>
-    {
-        // TODO: change to ApplyRuleOneStepGpuPackedTiled
+    { 
         [DllImport("Pozyx.CAE.Lib.AMP.dll", CallingConvention = CallingConvention.StdCall)]
-        extern unsafe private static int ApplyRuleOneStepGpuPacked(
-            int* inputCellSpace, int inputCellSpaceLength,
-            int* outputCellSpace, int outputCellSpaceLength,
+        extern unsafe private static int ApplyRuleOneStepGpuPackedTiled(
+            int* inputCellSpace, int inputCellSpaceArrayLength,
+            int* outputCellSpace, int outputCellSpaceArrayLength,
             int offsetDifference, byte rule);
 
         unsafe protected override void RunStep(PaddedPackedIntArrayCellSpace inputCellSpace, PaddedPackedIntArrayCellSpace outputCellSpace, bool[] rule)
@@ -24,9 +23,9 @@ namespace Pozyx.CAE.Lib.Runners
             fixed (int* inputCellSpaceInts = &inputCellSpace.PackedCells[0],
                         outputCellSpaceInts = &outputCellSpace.PackedCells[0])
             {
-                errorCode = ApplyRuleOneStepGpuPacked(
-                    inputCellSpaceInts, inputCellSpace.Length, // TODO: change inputCellSpace.PackedCells.Length,
-                    outputCellSpaceInts, outputCellSpace.Length, // TODO: change outputCellSpace.PackedCells.Length,
+                errorCode = ApplyRuleOneStepGpuPackedTiled(
+                    inputCellSpaceInts, inputCellSpace.PackedCells.Length,
+                    outputCellSpaceInts, outputCellSpace.PackedCells.Length,
                     offsetDifference, ruleByte);
             }
 
