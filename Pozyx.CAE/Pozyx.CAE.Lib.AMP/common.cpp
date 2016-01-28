@@ -1,4 +1,4 @@
-#define BITS_IN_INT (sizeof(int) * 8)
+#define BITS_IN_INT 32 // (int) (sizeof(int) * 8) 
 
 #define CHECK_BIT(x, index) ((x) & (1 << (index)))
 
