@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Pozyx.CAE.Lib;
 using Pozyx.CAE.Lib.CellSpaces;
 using Pozyx.CAE.Lib.Runners;
 
@@ -45,124 +46,119 @@ namespace Pozyx.CAE.Test
         [TestMethod]
         public void TestSingleThreadCpuRunner()
         {
-            // TestType.RecordOutput | 
-            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new SingleThreadCpuRunner<BoolArrayCellSpace>());
         }
 
         [TestMethod]
         public void TestSingleThreadOneCoreCpuRunner()
         {
-            // TestType.RecordOutput | 
-            TestRunner(new SingleThreadOneCoreCpuRunner<BoolArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new SingleThreadOneCoreCpuRunner<BoolArrayCellSpace>());
         }
 
         [TestMethod]
         public void TestOptimizedSingleThreadCpuRunner()
         {
-            // TestType.RecordOutput | 
-            TestRunner(new OptimizedSingleThreadCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new OptimizedSingleThreadCpuRunner());
         }
 
         [TestMethod]
         public void TestOptimizedSingleThreadOneCoreCpuRunner()
         {
-            // TestType.RecordOutput | 
-            TestRunner(new OptimizedSingleThreadOneCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new OptimizedSingleThreadOneCoreCpuRunner());
         }
 
         [TestMethod]
         public void TestTaskPerCellCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCellCpuRunner(), 110, 20);
+            TestRunner(new TaskPerCellCpuRunner());
         }
 
         [TestMethod]
         public void TestTaskPerCellStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new TaskPerCellStepCpuRunner(), 110, 20);
+            TestRunner(new TaskPerCellStepCpuRunner());
         }
 
         [TestMethod]
         public void TestPLinqPerStepCpuRunner()
         {
-            TestRunnerAndCompareWithRef(new PLinqPerStepCpuRunner(), 110, 20);
+            TestRunner(new PLinqPerStepCpuRunner());
         }
 
         [TestMethod]
         public void TestTaskPerCoreStepCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new TaskPerCoreStepCpuRunner(), 110, 5);
-            TestRunner(new TaskPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new TaskPerCoreStepCpuRunner());
         }
 
         [TestMethod]
         public void TestThreadPoolWorkItemPerCoreStepCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 5);
-            TestRunner(new ThreadPoolWorkItemPerCoreStepCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPoolWorkItemPerCoreStepCpuRunner());
         }
 
         [TestMethod]
         public void TestTaskPerCoreCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new TaskPerCoreCpuRunner(), 110, 5);
-            TestRunner(new TaskPerCoreCpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new TaskPerCoreCpuRunner());
         }
 
         [TestMethod]
         public void TestCppSingleThreadCpuRunner()
         {
-            // TestRunnerAndCompareWithRef(new CppSingleThreadCpuRunner(), 110, 5);
-            TestRunner(new CppSingleThreadCpuRunner(), 110, 20,TestType.TraceStatistics);
+            TestRunner(new CppSingleThreadCpuRunner());
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedGpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 5);
-            TestRunner(new ThreadPerCellStepCpuSyncedGpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPerCellStepCpuSyncedGpuRunner());
         }
 
         [TestMethod]
         public void TestThreadPerMultiCellsStepCpuSyncedGpuRunner()
         {
-           //TestRunnerAndCompareWithRef(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 20);
-           TestRunner(new ThreadPerMultiCellsStepCpuSyncedGpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPerMultiCellsStepCpuSyncedGpuRunner());
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedTiledGpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 5);
-            TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuRunner());
         }
 
         [TestMethod]
         public void TestPackedIntSingleThreadCpuRunner()
         {
-            //TestRunnerAndCompareWithRef(new SingleThreadCpuRunner<PackedIntArrayCellSpace>(), 110, 5);
-            TestRunner(new SingleThreadCpuRunner<PackedIntArrayCellSpace>(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new SingleThreadCpuRunner<PackedIntArrayCellSpace>());
         }
 
         [TestMethod]
         public void TestCppSingleThreadCpuPackedIntRunner()
         {
-            //TestRunnerAndCompareWithRef(new CppSingleThreadCpuPackedIntRunner(), 110, 5);
-            TestRunner(new CppSingleThreadCpuPackedIntRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new CppSingleThreadCpuPackedIntRunner());
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedGpuPackedRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedGpuPackedRunner(), 110, 5);
-            TestRunner(new ThreadPerCellStepCpuSyncedGpuPackedRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPerCellStepCpuSyncedGpuPackedRunner());
         }
 
         [TestMethod]
         public void TestThreadPerCellStepCpuSyncedTiledGpuPackedRunner()
         {
-            //TestRunnerAndCompareWithRef(new ThreadPerCellStepCpuSyncedTiledGpuPackedRunner(), 110, 5);
-            TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuPackedRunner(), 110, 20, TestType.TraceStatistics);
+            TestRunner(new ThreadPerCellStepCpuSyncedTiledGpuPackedRunner());
+        }
+
+        private void TestRunner<TCellSpace>(IRunner<TCellSpace> runner)
+            where TCellSpace : ICellSpace, new()
+        {
+            using (runner)
+            {
+                //TestRunnerAndCompareWithRef(runner, 110, 5);
+                TestRunner(runner, 110, 20, TestType.TraceStatistics);
+            }
         }
 
         public void TestRunnerAndCompareWithRef<TCellSpace>(IRunner<TCellSpace> runner, int ruleNumber, int seconds)
@@ -177,7 +173,7 @@ namespace Pozyx.CAE.Test
 
             Assert.IsTrue(result.Count > 100);
 
-            var refRunner = new OptimizedSingleThreadCpuRunner();
+            var refRunner = new TaskPerCoreStepCpuRunner();
 
             Trace.WriteLine($"CAE:\tRunning Ref. CA using {refRunner.GetType().Name}...");
 

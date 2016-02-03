@@ -34,5 +34,11 @@ namespace Pozyx.CAE.Lib.Runners
             if (errorCode != 0)
                 throw new InvalidOperationException($"Error returned from native code. Code: {errorCode}");
         }
+
+        public override void Dispose()
+        {
+            AmpUninitializer.UninitializeAmp();
+            base.Dispose();
+        }
     }
 }

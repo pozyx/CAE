@@ -1,1 +1,2 @@
+- multiple iterations on gpu in one go
 - next on the "wallpaper"

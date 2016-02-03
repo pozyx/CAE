@@ -28,6 +28,9 @@
     <ClCompile Include="ApplyRuleOneStepGpuPackedTiled.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UninitializeAmp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.cpp">

@@ -76,5 +76,9 @@ namespace Pozyx.CAE.Lib.Runners
                 prevStep = nextStep;
             }
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

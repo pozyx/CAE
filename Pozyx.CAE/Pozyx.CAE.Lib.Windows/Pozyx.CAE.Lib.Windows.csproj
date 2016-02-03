@@ -38,6 +38,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AmpUninitializer.cs" />
     <Compile Include="Runners\CppSingleThreadCpuPackedIntRunner.cs" />
     <Compile Include="Runners\CppSingleThreadCpuRunner.cs" />
     <Compile Include="Runners\OptimizedSingleThreadOneCoreCpuRunner.cs" />

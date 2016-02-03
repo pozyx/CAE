@@ -50,5 +50,9 @@ namespace Pozyx.CAE.Lib.Runners
                 observer.OnNext(nextCellSpace);
             }
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

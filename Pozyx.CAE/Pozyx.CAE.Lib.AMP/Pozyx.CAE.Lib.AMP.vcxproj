@@ -173,6 +173,7 @@
     <ClCompile Include="ApplyRuleOneStepGpuWithLimitedConcurrency.cpp" />
     <ClCompile Include="ApplyRuleOneStepGpuTiled.cpp" />
     <ClCompile Include="ApplyRuleOneStepSingleThreadWithCpuPacked.cpp" />
+    <ClCompile Include="UninitializeAmp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.cpp" />

@@ -78,5 +78,9 @@ namespace Pozyx.CAE.Lib.Runners
         }
 
         protected abstract void RunStep(TCellSpace inputCellSpace, TCellSpace outputCellSpace, bool[] rule);
+
+        public virtual void Dispose()
+        {
+        }
     }
 }
