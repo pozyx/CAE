@@ -117,7 +117,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
+      <Command>xcopy "$(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.*" $(OutDir) /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
