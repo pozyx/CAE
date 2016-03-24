@@ -18,3 +18,5 @@ Uncomment any runner in `Pozyx.CAE.TestApp\Program.cs`
 * Debugger Type & Amp Default Accelerator settings in C++ proj.: `Auto+Warp` (C++ CPU); `GPU Only+Warp` (C++ GPU); `Mixed+Warp` (.NET CPU and C++ CPU)
 * Debug => Debug configuration, F5; Run => Release configuration, CTRL+F5
 * manually rebuild when .NET code changes!
+
+test
