@@ -100,7 +100,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
+      <Command>xcopy "$(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.*" $(OutDir) /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -117,7 +117,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
+      <Command>xcopy "$(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.*" $(OutDir) /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -137,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
+      <Command>xcopy "$(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.*" $(OutDir) /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -159,7 +159,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy $(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.* $(OutDir) /I /Y</Command>
+      <Command>xcopy "$(SolutionDir)\Pozyx.CAE.TestApp\bin\$(Configuration)\*.*" $(OutDir) /I /Y</Command>
     </PostBuildEvent>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
