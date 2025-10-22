@@ -27,7 +27,7 @@ async fn run() {
     println!("Using GPU: {} ({:?})", info.name, info.backend);
 
     // Request a device and queue
-    let (device, queue) = adapter
+    let (device, _queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("Main Device"),
