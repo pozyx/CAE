@@ -28,8 +28,10 @@ pub fn run_ca(
     initial_state: Option<String>,
 ) -> CaResult {
     // Add padding for boundary simulation
-    // Pattern can expand `iterations` cells in each direction from the visible area
-    let padding = iterations;
+    // Pattern can expand by (start_generation + iterations) cells in each direction
+    // because we compute from generation 0 through start_generation + iterations
+    let total_generations = start_generation + iterations;
+    let padding = total_generations;
     let simulated_width = visible_width + 2 * padding;
 
     println!("Visible width: {}, Simulated width: {} (padding: {})", visible_width, simulated_width, padding);

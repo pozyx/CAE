@@ -488,9 +488,9 @@ impl RenderApp {
             label: Some("Render Encoder"),
         });
 
-        // Show subtle blue tint when recomputing
+        // Show blue/gray during recompute to indicate waiting
         let clear_color = if self.needs_recompute {
-            wgpu::Color { r: 0.0, g: 0.0, b: 0.05, a: 1.0 }
+            wgpu::Color { r: 0.1, g: 0.1, b: 0.15, a: 1.0 }
         } else {
             wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
         };
@@ -511,11 +511,14 @@ impl RenderApp {
                 occlusion_query_set: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, self.bind_group.as_ref().unwrap(), &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
+            // Only render CA if we have a valid buffer and we're not recomputing
+            if !self.needs_recompute && self.bind_group.is_some() {
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.set_bind_group(0, self.bind_group.as_ref().unwrap(), &[]);
+                render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -571,6 +574,7 @@ impl ApplicationHandler for RenderApp {
                 }
 
                 // Update window dimensions and mark for recompute
+                // Keep rendering old buffer until new one is computed
                 self.window_width = physical_size.width;
                 self.window_height = physical_size.height;
                 self.mark_viewport_changed();
