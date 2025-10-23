@@ -197,14 +197,3 @@ pub async fn run_ca(
 
     result
 }
-
-pub fn display_ascii(result: &[Vec<u32>]) {
-    println!("\n=== Cellular Automaton Result ===\n");
-
-    for row in result {
-        for &cell in row {
-            print!("{}", if cell == 1 { "█" } else { " " });
-        }
-        println!();
-    }
-}

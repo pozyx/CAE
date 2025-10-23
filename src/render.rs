@@ -54,8 +54,8 @@ const INDICES: &[u16] = &[
 struct RenderParams {
     width: u32,
     height: u32,
-    current_iteration: u32,
-    _padding: u32,
+    _padding1: u32,
+    _padding2: u32,
 }
 
 pub struct RenderApp {
@@ -76,9 +76,6 @@ pub struct RenderApp {
     bind_group_layout: wgpu::BindGroupLayout,
     grid_width: u32,
     grid_height: u32,
-    current_iteration: u32,
-    is_animated: bool,
-    last_update: std::time::Instant,
 }
 
 impl RenderApp {
@@ -114,11 +111,9 @@ impl RenderApp {
             .await
             .expect("Failed to create device");
 
-        // Determine grid dimensions
-        let grid_width = args.width.unwrap_or_else(|| {
-            (args.iterations * 2 + 1).max(256)
-        });
-        let grid_height = args.iterations + 1;
+        // Grid dimensions match window dimensions (1 cell per pixel)
+        let grid_width = args.width;
+        let grid_height = args.height;
 
         println!("Grid dimensions: {}x{}", grid_width, grid_height);
 
@@ -215,18 +210,17 @@ impl RenderApp {
         });
 
         // Create params buffer
-        let is_animated = args.render_mode == "animated";
-        let initial_params = RenderParams {
+        let params = RenderParams {
             width: grid_width,
             height: grid_height,
-            current_iteration: if is_animated { 0 } else { grid_height - 1 },
-            _padding: 0,
+            _padding1: 0,
+            _padding2: 0,
         };
 
         let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Render Params Buffer"),
-            contents: bytemuck::cast_slice(&[initial_params]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
         Self {
@@ -247,15 +241,12 @@ impl RenderApp {
             bind_group_layout,
             grid_width,
             grid_height,
-            current_iteration: if is_animated { 0 } else { grid_height - 1 },
-            is_animated,
-            last_update: std::time::Instant::now(),
         }
     }
 
     fn init_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        let window_width = self.args.window_width.unwrap_or(self.grid_width.max(800));
-        let window_height = self.args.window_height.unwrap_or(self.grid_height.max(600));
+        let window_width = self.args.width;
+        let window_height = self.args.height;
 
         let window_attributes = Window::default_attributes()
             .with_title(format!("Cellular Automaton - Rule {}", self.args.rule))
@@ -296,12 +287,15 @@ impl RenderApp {
     fn compute_ca(&mut self) {
         println!("Computing cellular automaton...");
 
+        // Iterations = height - 1 (first row is initial state)
+        let iterations = self.grid_height - 1;
+
         // Run CA computation
         let result = pollster::block_on(compute::run_ca(
             &self.device,
             &self.queue,
             self.args.rule,
-            self.args.iterations,
+            iterations,
             Some(self.grid_width),
             self.args.initial_state.clone(),
         ));
@@ -383,29 +377,6 @@ impl RenderApp {
 
         Ok(())
     }
-
-    fn update(&mut self) {
-        if self.is_animated && self.current_iteration < self.grid_height - 1 {
-            let now = std::time::Instant::now();
-            let elapsed = now.duration_since(self.last_update).as_millis();
-
-            // Update every 50ms (20 fps for animation)
-            if elapsed > 50 {
-                self.current_iteration += 1;
-                self.last_update = now;
-
-                // Update params buffer
-                let params = RenderParams {
-                    width: self.grid_width,
-                    height: self.grid_height,
-                    current_iteration: self.current_iteration,
-                    _padding: 0,
-                };
-
-                self.queue.write_buffer(&self.params_buffer, 0, bytemuck::cast_slice(&[params]));
-            }
-        }
-    }
 }
 
 impl ApplicationHandler for RenderApp {
@@ -427,7 +398,6 @@ impl ApplicationHandler for RenderApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                self.update();
                 match self.render() {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => {

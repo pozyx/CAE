@@ -24,8 +24,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 struct RenderParams {
     width: u32,
     height: u32,
-    current_iteration: u32,
-    _padding: u32,
+    _padding1: u32,
+    _padding2: u32,
 }
 
 @fragment
@@ -33,12 +33,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Convert texture coordinates to cell coordinates
     let x = u32(in.tex_coords.x * f32(params.width));
     let y = u32(in.tex_coords.y * f32(params.height));
-
-    // For animated mode, only show up to current_iteration
-    // For static mode, current_iteration will be set to max
-    if (y > params.current_iteration) {
-        return vec4<f32>(0.0, 0.0, 0.0, 1.0); // Black for uncomputed rows
-    }
 
     // Bounds check
     if (x >= params.width || y >= params.height) {
