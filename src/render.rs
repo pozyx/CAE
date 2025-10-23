@@ -1,13 +1,45 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
     event_loop::EventLoop,
+    keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
 use crate::{compute, Args};
+
+/// Viewport state in world space coordinates
+#[derive(Debug, Clone)]
+struct Viewport {
+    /// Horizontal offset in cells (can be negative, 0 = initial cell centered)
+    offset_x: f32,
+    /// Vertical offset in cells (0 = generation 0, positive = later generations)
+    offset_y: f32,
+    /// Zoom level (1.0 = default, >1.0 = zoomed in, <1.0 = zoomed out)
+    zoom: f32,
+}
+
+impl Viewport {
+    fn new() -> Self {
+        Self {
+            offset_x: 0.0,
+            offset_y: 0.0,
+            zoom: 1.0,
+        }
+    }
+}
+
+/// Mouse drag state
+#[derive(Debug, Clone)]
+struct DragState {
+    active: bool,
+    start_x: f64,
+    start_y: f64,
+    viewport_at_start: Viewport,
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -74,8 +106,17 @@ pub struct RenderApp {
     params_buffer: wgpu::Buffer,
     bind_group: Option<wgpu::BindGroup>,
     bind_group_layout: wgpu::BindGroupLayout,
-    grid_width: u32,
-    grid_height: u32,
+
+    // Viewport state
+    viewport: Viewport,
+    drag_state: Option<DragState>,
+    last_viewport_change: Option<Instant>,
+    needs_recompute: bool,
+    cursor_position: (f64, f64),
+
+    // Window and cell dimensions
+    window_width: u32,
+    window_height: u32,
 }
 
 impl RenderApp {
@@ -111,11 +152,12 @@ impl RenderApp {
             .await
             .expect("Failed to create device");
 
-        // Grid dimensions match window dimensions (1 cell per pixel)
-        let grid_width = args.width;
-        let grid_height = args.height;
+        // Initial window dimensions
+        let window_width = args.width;
+        let window_height = args.height;
 
-        println!("Grid dimensions: {}x{}", grid_width, grid_height);
+        println!("Initial window size: {}x{} pixels, cell size: {}px",
+            window_width, window_height, args.cell_size);
 
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -211,9 +253,9 @@ impl RenderApp {
 
         // Create params buffer (will be updated after CA computation)
         let params = RenderParams {
-            visible_width: grid_width,
-            visible_height: grid_height,
-            simulated_width: grid_width,
+            visible_width: window_width / args.cell_size,
+            visible_height: window_height / args.cell_size,
+            simulated_width: window_width / args.cell_size,
             padding_left: 0,
         };
 
@@ -239,20 +281,39 @@ impl RenderApp {
             params_buffer,
             bind_group: None,
             bind_group_layout,
-            grid_width,
-            grid_height,
+
+            viewport: Viewport::new(),
+            drag_state: None,
+            last_viewport_change: None,
+            needs_recompute: true,
+            cursor_position: (window_width as f64 / 2.0, window_height as f64 / 2.0),
+
+            window_width,
+            window_height,
         }
     }
 
     fn init_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        let window_width = self.args.width;
-        let window_height = self.args.height;
+        let window_width = self.window_width;
+        let window_height = self.window_height;
 
-        let window_attributes = Window::default_attributes()
+        let mut window_attributes = Window::default_attributes()
             .with_title(format!("Cellular Automaton - Rule {}", self.args.rule))
             .with_inner_size(winit::dpi::PhysicalSize::new(window_width, window_height));
 
+        // Set fullscreen if requested
+        if self.args.fullscreen {
+            window_attributes = window_attributes.with_fullscreen(Some(
+                winit::window::Fullscreen::Borderless(None)
+            ));
+        }
+
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        // Update actual window dimensions (may differ from requested if fullscreen)
+        let actual_size = window.inner_size();
+        self.window_width = actual_size.width;
+        self.window_height = actual_size.height;
 
         // Create surface
         let surface = self.instance.create_surface(window.clone()).unwrap();
@@ -266,8 +327,8 @@ impl RenderApp {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: window_width,
-            height: window_height,
+            width: self.window_width,
+            height: self.window_height,
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -287,8 +348,19 @@ impl RenderApp {
     fn compute_ca(&mut self) {
         println!("Computing cellular automaton...");
 
-        // Iterations = height - 1 (first row is initial state)
-        let iterations = self.grid_height - 1;
+        // Calculate visible cells based on window size, cell size, and zoom
+        let visible_cells_x = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as u32;
+        let visible_cells_y = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as u32;
+
+        // Clamp offset_y to not go below generation 0
+        let clamped_offset_y = self.viewport.offset_y.max(0.0);
+
+        // Calculate number of iterations needed (from offset_y to offset_y + visible_cells_y)
+        let iterations = visible_cells_y;
+
+        println!("Viewport - offset: ({:.1}, {:.1}), zoom: {:.2}",
+            self.viewport.offset_x, clamped_offset_y, self.viewport.zoom);
+        println!("Visible cells: {}x{}, iterations: {}", visible_cells_x, visible_cells_y, iterations);
 
         // Run CA computation - result stays on GPU!
         let ca_result = compute::run_ca(
@@ -296,7 +368,7 @@ impl RenderApp {
             &self.queue,
             self.args.rule,
             iterations,
-            self.grid_width,
+            visible_cells_x,
             self.args.initial_state.clone(),
         );
 
@@ -337,8 +409,54 @@ impl RenderApp {
 
         self.ca_buffer = Some(ca_result.buffer);
         self.bind_group = Some(bind_group);
+        self.needs_recompute = false;
 
         println!("Computation complete! (zero-copy GPU rendering)");
+    }
+
+    fn mark_viewport_changed(&mut self) {
+        self.last_viewport_change = Some(Instant::now());
+        self.needs_recompute = true;
+    }
+
+    fn check_debounce_and_recompute(&mut self) {
+        if let Some(last_change) = self.last_viewport_change {
+            let debounce_duration = Duration::from_millis(self.args.debounce_ms);
+            if last_change.elapsed() >= debounce_duration && self.needs_recompute {
+                self.compute_ca();
+                self.last_viewport_change = None;
+            }
+        }
+    }
+
+    fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
+        // Calculate zoom factor
+        let zoom_factor = if delta > 0.0 { 1.1 } else { 1.0 / 1.1 };
+        let new_zoom = (self.viewport.zoom * zoom_factor).clamp(self.args.zoom_min, self.args.zoom_max);
+
+        if (new_zoom - self.viewport.zoom).abs() > 0.001 {
+            // Convert cursor position to world space before zoom
+            let visible_cells_x_before = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+            let visible_cells_y_before = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+
+            let cursor_cell_x = self.viewport.offset_x + (cursor_x as f32 / self.window_width as f32) * visible_cells_x_before;
+            let cursor_cell_y = self.viewport.offset_y + (cursor_y as f32 / self.window_height as f32) * visible_cells_y_before;
+
+            // Apply zoom
+            self.viewport.zoom = new_zoom;
+
+            // Adjust offset to keep cursor position fixed in world space
+            let visible_cells_x_after = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+            let visible_cells_y_after = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+
+            self.viewport.offset_x = cursor_cell_x - (cursor_x as f32 / self.window_width as f32) * visible_cells_x_after;
+            self.viewport.offset_y = cursor_cell_y - (cursor_y as f32 / self.window_height as f32) * visible_cells_y_after;
+
+            // Clamp offset_y to not go below 0
+            self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+
+            self.mark_viewport_changed();
+        }
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -404,6 +522,9 @@ impl ApplicationHandler for RenderApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
+                // Check if debounce period has elapsed and recompute if needed
+                self.check_debounce_and_recompute();
+
                 match self.render() {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => {
@@ -425,6 +546,103 @@ impl ApplicationHandler for RenderApp {
                     config.width = physical_size.width;
                     config.height = physical_size.height;
                     self.surface.as_ref().unwrap().configure(&self.device, config);
+                }
+
+                // Update window dimensions and mark for recompute
+                self.window_width = physical_size.width;
+                self.window_height = physical_size.height;
+                self.mark_viewport_changed();
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let delta_y = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => y,
+                    winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 10.0,
+                };
+
+                // Use tracked cursor position
+                let (cursor_x, cursor_y) = self.cursor_position;
+                self.handle_zoom(delta_y, cursor_x, cursor_y);
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                // Track cursor position
+                self.cursor_position = (position.x, position.y);
+
+                if let Some(ref mut drag) = self.drag_state {
+                    if drag.active {
+                        // Calculate delta in screen pixels
+                        let delta_x = position.x - drag.start_x;
+                        let delta_y = position.y - drag.start_y;
+
+                        // Convert to cell delta
+                        let visible_cells_x = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+                        let visible_cells_y = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+
+                        let delta_cells_x = -(delta_x as f32 / self.window_width as f32) * visible_cells_x;
+                        let delta_cells_y = -(delta_y as f32 / self.window_height as f32) * visible_cells_y;
+
+                        // Apply offset from drag start position
+                        self.viewport.offset_x = drag.viewport_at_start.offset_x + delta_cells_x;
+                        self.viewport.offset_y = drag.viewport_at_start.offset_y + delta_cells_y;
+
+                        // Clamp offset_y to not go below 0
+                        self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+
+                        self.mark_viewport_changed();
+                    }
+                }
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                if button == winit::event::MouseButton::Left {
+                    match state {
+                        winit::event::ElementState::Pressed => {
+                            // Start drag
+                            let (pos_x, pos_y) = self.cursor_position;
+
+                            self.drag_state = Some(DragState {
+                                active: true,
+                                start_x: pos_x,
+                                start_y: pos_y,
+                                viewport_at_start: self.viewport.clone(),
+                            });
+                        }
+                        winit::event::ElementState::Released => {
+                            // End drag
+                            if let Some(ref mut drag) = self.drag_state {
+                                drag.active = false;
+                            }
+                        }
+                    }
+                }
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == winit::event::ElementState::Pressed {
+                    if let PhysicalKey::Code(keycode) = event.physical_key {
+                        match keycode {
+                            KeyCode::F11 => {
+                                // Toggle fullscreen
+                                if let Some(window) = &self.window {
+                                    let is_fullscreen = window.fullscreen().is_some();
+                                    window.set_fullscreen(if is_fullscreen {
+                                        None
+                                    } else {
+                                        Some(winit::window::Fullscreen::Borderless(None))
+                                    });
+                                }
+                            }
+                            KeyCode::Escape => {
+                                // Exit fullscreen or close
+                                if let Some(window) = &self.window {
+                                    if window.fullscreen().is_some() {
+                                        window.set_fullscreen(None);
+                                    } else {
+                                        println!("Escape pressed, exiting...");
+                                        event_loop.exit();
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
             _ => {}

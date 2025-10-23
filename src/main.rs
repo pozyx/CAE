@@ -16,13 +16,33 @@ pub struct Args {
     #[arg(short = 's', long)]
     pub initial_state: Option<String>,
 
-    /// Window width (default: 800)
+    /// Window width in pixels (default: 800)
     #[arg(short, long, default_value = "800")]
     pub width: u32,
 
-    /// Window height (default: 600)
+    /// Window height in pixels (default: 600)
     #[arg(long, default_value = "600")]
     pub height: u32,
+
+    /// Cell size in pixels (default: 1, each cell is NxN pixels)
+    #[arg(short = 'c', long, default_value = "1")]
+    pub cell_size: u32,
+
+    /// Minimum zoom level (default: 0.1)
+    #[arg(long, default_value = "0.1")]
+    pub zoom_min: f32,
+
+    /// Maximum zoom level (default: 10.0)
+    #[arg(long, default_value = "10.0")]
+    pub zoom_max: f32,
+
+    /// Debounce time in milliseconds before recomputing after viewport change (default: 100)
+    #[arg(long, default_value = "100")]
+    pub debounce_ms: u64,
+
+    /// Start in fullscreen mode
+    #[arg(short = 'f', long, default_value = "false")]
+    pub fullscreen: bool,
 }
 
 fn main() {
