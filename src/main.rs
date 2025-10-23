@@ -24,8 +24,8 @@ pub struct Args {
     #[arg(long, default_value = "600")]
     pub height: u32,
 
-    /// Cell size in pixels (default: 1, each cell is NxN pixels)
-    #[arg(short = 'c', long, default_value = "1")]
+    /// Cell size in pixels (default: 10, each cell is NxN pixels)
+    #[arg(short = 'c', long, default_value = "10")]
     pub cell_size: u32,
 
     /// Minimum zoom level (default: 0.1)

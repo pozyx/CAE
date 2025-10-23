@@ -488,13 +488,6 @@ impl RenderApp {
             label: Some("Render Encoder"),
         });
 
-        // Show blue/gray during recompute to indicate waiting
-        let clear_color = if self.needs_recompute {
-            wgpu::Color { r: 0.1, g: 0.1, b: 0.15, a: 1.0 }
-        } else {
-            wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
-        };
-
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -502,7 +495,12 @@ impl RenderApp {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear_color),
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -511,8 +509,9 @@ impl RenderApp {
                 occlusion_query_set: None,
             });
 
-            // Only render CA if we have a valid buffer and we're not recomputing
-            if !self.needs_recompute && self.bind_group.is_some() {
+            // Always render CA if we have a valid buffer (even during recomputation)
+            // Uncomputed areas will show as black, giving immediate visual feedback
+            if self.bind_group.is_some() {
                 render_pass.set_pipeline(&self.render_pipeline);
                 render_pass.set_bind_group(0, self.bind_group.as_ref().unwrap(), &[]);
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -621,7 +620,11 @@ impl ApplicationHandler for RenderApp {
                 if button == winit::event::MouseButton::Left {
                     match state {
                         winit::event::ElementState::Pressed => {
-                            // Start drag
+                            // Start drag - change cursor to hand
+                            if let Some(window) = &self.window {
+                                window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Grabbing));
+                            }
+
                             let (pos_x, pos_y) = self.cursor_position;
 
                             self.drag_state = Some(DragState {
@@ -632,7 +635,11 @@ impl ApplicationHandler for RenderApp {
                             });
                         }
                         winit::event::ElementState::Released => {
-                            // End drag
+                            // End drag - restore default cursor
+                            if let Some(window) = &self.window {
+                                window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Default));
+                            }
+
                             if let Some(ref mut drag) = self.drag_state {
                                 drag.active = false;
                             }
