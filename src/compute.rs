@@ -6,7 +6,7 @@ struct Params {
     width: u32,
     height: u32,
     rule: u32,
-    _padding: u32,
+    current_row: u32,
 }
 
 pub async fn run_ca(
@@ -117,61 +117,58 @@ pub async fn run_ca(
         cache: None,
     });
 
-    // Create params buffer - single dispatch for ALL iterations
-    let params = Params {
-        width,
-        height,
-        rule: rule as u32,
-        _padding: 0,
-    };
-
-    let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Params Buffer"),
-        contents: bytemuck::cast_slice(&[params]),
-        usage: wgpu::BufferUsages::UNIFORM,
-    });
-
-    // Create bind group
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("CA Bind Group"),
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: storage_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: params_buffer.as_entire_binding(),
-            },
-        ],
-    });
-
-    // Single dispatch to compute ALL iterations on GPU
+    // Create a single command encoder for ALL iterations
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("CA Compute Encoder"),
     });
 
-    {
-        let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("CA Compute Pass"),
-            timestamp_writes: None,
-        });
-        compute_pass.set_pipeline(&pipeline);
-        compute_pass.set_bind_group(0, &bind_group, &[]);
+    // Dispatch all iterations in a single command buffer
+    let workgroups = (width + 255) / 256;
 
-        // Dispatch one workgroup per column (each thread handles all iterations for one x-position)
-        let workgroups = (width + 255) / 256;
-        compute_pass.dispatch_workgroups(workgroups, 1, 1);
+    for iter in 0..iterations {
+        let params = Params {
+            width,
+            height,
+            rule: rule as u32,
+            current_row: iter,
+        };
+
+        let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Params Buffer"),
+            contents: bytemuck::cast_slice(&[params]),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("CA Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: storage_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: params_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("CA Compute Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
     }
 
-    queue.submit(Some(encoder.finish()));
-
     // Copy result to staging buffer
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Copy Encoder"),
-    });
     encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, buffer_size);
+
+    // Submit ALL work at once
     queue.submit(Some(encoder.finish()));
 
     // Read back results
