@@ -9,50 +9,53 @@ struct Params {
     current_row: u32,
 }
 
+pub struct CaResult {
+    pub data: Vec<Vec<u32>>,
+    pub visible_width: u32,
+    pub padding_left: u32,
+}
+
 pub async fn run_ca(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     rule: u8,
     iterations: u32,
-    width_opt: Option<u32>,
+    visible_width: u32,
     initial_state: Option<String>,
-) -> Vec<Vec<u32>> {
-    // Determine width
-    let width = width_opt.unwrap_or_else(|| {
-        // Auto-calculate width: start with a reasonable size
-        // For center-cell initialization, we need at least iterations * 2 + 1
-        // to avoid boundary issues
-        (iterations * 2 + 1).max(256)
-    });
-
+) -> CaResult {
+    // Add padding for boundary simulation
+    // Pattern can expand `iterations` cells in each direction
+    let padding = iterations;
+    let simulated_width = visible_width + 2 * padding;
     let height = iterations + 1;
 
-    println!("Grid width: {}", width);
+    println!("Visible width: {}, Simulated width: {} (padding: {})", visible_width, simulated_width, padding);
 
-    // Initialize first row
-    let mut initial_row = vec![0u32; width as usize];
+    // Initialize first row with padding
+    let mut initial_row = vec![0u32; simulated_width as usize];
 
     if let Some(state_str) = initial_state {
-        // Parse user-provided initial state
+        // Parse user-provided initial state (centered in simulated space)
+        let start_offset = padding as usize;
         for (i, ch) in state_str.chars().enumerate() {
-            if i >= width as usize {
+            if i >= visible_width as usize {
                 break;
             }
-            initial_row[i] = if ch == '1' { 1 } else { 0 };
+            initial_row[start_offset + i] = if ch == '1' { 1 } else { 0 };
         }
     } else {
-        // Default: single cell in center
-        let center = width as usize / 2;
+        // Default: single cell in center of simulated space
+        let center = simulated_width as usize / 2;
         initial_row[center] = 1;
     }
 
-    // Create buffer for all iterations (width x height)
-    let total_cells = width * height;
+    // Create buffer for all iterations (simulated_width x height)
+    let total_cells = simulated_width * height;
     let buffer_size = (total_cells * 4) as u64;
 
     // Initialize both buffers with first row
     let mut all_data = vec![0u32; total_cells as usize];
-    all_data[0..width as usize].copy_from_slice(&initial_row);
+    all_data[0..simulated_width as usize].copy_from_slice(&initial_row);
 
     // Create ping-pong buffers
     let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -140,11 +143,11 @@ pub async fn run_ca(
     });
 
     // Dispatch all iterations with ping-pong buffers
-    let workgroups = (width + 255) / 256;
+    let workgroups = (simulated_width + 255) / 256;
 
     for iter in 0..iterations {
         let params = Params {
-            width,
+            width: simulated_width,
             height,
             rule: rule as u32,
             current_row: iter,
@@ -215,13 +218,17 @@ pub async fn run_ca(
     drop(data);
     staging_buffer.unmap();
 
-    // Convert flat buffer to 2D vector
+    // Convert flat buffer to 2D vector (keep full simulated width for now)
     let mut result = Vec::new();
     for row in 0..height {
-        let start = (row * width) as usize;
-        let end = start + width as usize;
+        let start = (row * simulated_width) as usize;
+        let end = start + simulated_width as usize;
         result.push(result_data[start..end].to_vec());
     }
 
-    result
+    CaResult {
+        data: result,
+        visible_width,
+        padding_left: padding,
+    }
 }

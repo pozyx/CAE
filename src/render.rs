@@ -290,20 +290,25 @@ impl RenderApp {
         // Iterations = height - 1 (first row is initial state)
         let iterations = self.grid_height - 1;
 
-        // Run CA computation
-        let result = pollster::block_on(compute::run_ca(
+        // Run CA computation with padding
+        let ca_result = pollster::block_on(compute::run_ca(
             &self.device,
             &self.queue,
             self.args.rule,
             iterations,
-            Some(self.grid_width),
+            self.grid_width,
             self.args.initial_state.clone(),
         ));
 
-        // Flatten result to 1D array
+        // Extract only the visible portion (center of simulated grid)
         let mut flat_data = Vec::new();
-        for row in result {
-            flat_data.extend(row);
+        let padding_left = ca_result.padding_left as usize;
+        let visible_width = ca_result.visible_width as usize;
+
+        for row in &ca_result.data {
+            // Take only the visible portion from each row
+            let visible_slice = &row[padding_left..padding_left + visible_width];
+            flat_data.extend_from_slice(visible_slice);
         }
 
         // Create CA buffer
