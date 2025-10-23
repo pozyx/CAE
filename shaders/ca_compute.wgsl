@@ -1,10 +1,9 @@
 // Cellular Automaton Compute Shader
 // Applies a 1D CA rule to compute the next generation
-// Uses separate read and write buffers to avoid race conditions
+// Uses single buffer: reads from row N, writes to row N+1 (safe without race conditions)
 
-@group(0) @binding(0) var<storage, read> input_state: array<u32>;
-@group(0) @binding(1) var<storage, read_write> output_state: array<u32>;
-@group(0) @binding(2) var<uniform> params: Params;
+@group(0) @binding(0) var<storage, read_write> ca_state: array<u32>;
+@group(0) @binding(1) var<uniform> params: Params;
 
 struct Params {
     width: u32,
@@ -13,7 +12,7 @@ struct Params {
     current_row: u32,
 }
 
-// Get cell value at position in current row from input buffer
+// Get cell value at position in current row from CA buffer
 fn get_cell(x: i32) -> u32 {
     let width = i32(params.width);
 
@@ -23,7 +22,7 @@ fn get_cell(x: i32) -> u32 {
     }
 
     let idx = params.current_row * params.width + u32(x);
-    return input_state[idx];
+    return ca_state[idx];
 }
 
 // Apply CA rule to determine next state
@@ -47,15 +46,15 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
-    // Get neighborhood from current row (reading from input buffer)
+    // Get neighborhood from current row (reading from CA buffer)
     let left = get_cell(x - 1);
     let center = get_cell(x);
     let right = get_cell(x + 1);
 
-    // Apply rule and write to next row (writing to output buffer)
+    // Apply rule and write to next row (writing to CA buffer)
     let next_state = apply_rule(left, center, right);
     let next_row = params.current_row + 1u;
     let out_idx = next_row * params.width + u32(x);
 
-    output_state[out_idx] = next_state;
+    ca_state[out_idx] = next_state;
 }

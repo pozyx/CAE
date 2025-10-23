@@ -66,19 +66,13 @@ pub fn run_ca(
     // Create buffer for all iterations from gen 0 to start + visible
     let total_cells = simulated_width * buffer_height;
 
-    // Initialize both buffers with first row
+    // Initialize buffer with first row
     let mut all_data = vec![0u32; total_cells as usize];
     all_data[0..simulated_width as usize].copy_from_slice(&initial_row);
 
-    // Create ping-pong buffers (need STORAGE for compute and COPY_SRC for extracting visible range)
-    let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("CA State Buffer A"),
-        contents: bytemuck::cast_slice(&all_data),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-    });
-
-    let buffer_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("CA State Buffer B"),
+    // Create single buffer (no ping-pong needed since we read from row N and write to row N+1)
+    let ca_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("CA State Buffer"),
         contents: bytemuck::cast_slice(&all_data),
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     });
@@ -89,22 +83,12 @@ pub fn run_ca(
         source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ca_compute.wgsl").into()),
     });
 
-    // Create bind group layout (now with 3 bindings: input, output, params)
+    // Create bind group layout (single buffer for both read and write, plus params)
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("CA Bind Group Layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -114,7 +98,7 @@ pub fn run_ca(
                 count: None,
             },
             wgpu::BindGroupLayoutEntry {
-                binding: 2,
+                binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
@@ -164,27 +148,17 @@ pub fn run_ca(
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // Ping-pong: even iterations A->B, odd iterations B->A
-        let (read_buffer, write_buffer) = if iter % 2 == 0 {
-            (&buffer_a, &buffer_b)
-        } else {
-            (&buffer_b, &buffer_a)
-        };
-
+        // Use single buffer (reads from current_row, writes to current_row + 1)
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("CA Bind Group"),
             layout: &bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: read_buffer.as_entire_binding(),
+                    resource: ca_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: write_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
@@ -204,9 +178,6 @@ pub fn run_ca(
     // Submit compute work
     queue.submit(Some(encoder.finish()));
 
-    // Determine which buffer has the final result
-    let source_buffer = if total_iterations % 2 == 0 { &buffer_a } else { &buffer_b };
-
     // Create output buffer containing only the visible range (start_generation to start_generation + iterations)
     let visible_height = iterations + 1;
     let visible_buffer_size = (simulated_width * visible_height * 4) as wgpu::BufferAddress;
@@ -218,14 +189,14 @@ pub fn run_ca(
         mapped_at_creation: false,
     });
 
-    // Copy visible range from source buffer
+    // Copy visible range from CA buffer
     let mut copy_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("Copy Encoder"),
     });
 
     let source_offset = (start_generation * simulated_width * 4) as wgpu::BufferAddress;
     copy_encoder.copy_buffer_to_buffer(
-        source_buffer,
+        &ca_buffer,
         source_offset,
         &output_buffer,
         0,
