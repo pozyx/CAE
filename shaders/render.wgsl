@@ -26,13 +26,21 @@ struct RenderParams {
     visible_height: u32,
     simulated_width: u32,
     padding_left: u32,
+    cell_size: u32,
+    window_width: u32,
+    window_height: u32,
+    _padding: u32,
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Convert texture coordinates to visible cell coordinates
-    let visible_x = u32(in.tex_coords.x * f32(params.visible_width));
-    let visible_y = u32(in.tex_coords.y * f32(params.visible_height));
+    // Convert texture coordinates to pixel coordinates
+    let pixel_x = u32(in.tex_coords.x * f32(params.window_width));
+    let pixel_y = u32(in.tex_coords.y * f32(params.window_height));
+
+    // Convert pixel coordinates to cell coordinates
+    let visible_x = pixel_x / params.cell_size;
+    let visible_y = pixel_y / params.cell_size;
 
     // Bounds check
     if (visible_x >= params.visible_width || visible_y >= params.visible_height) {

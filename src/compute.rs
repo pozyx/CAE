@@ -21,54 +21,64 @@ pub fn run_ca(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     rule: u8,
-    iterations: u32,
+    start_generation: u32,      // Which generation to start from (viewport offset_y)
+    iterations: u32,             // How many generations to compute
     visible_width: u32,
+    horizontal_offset: i32,      // Horizontal cell offset (viewport offset_x)
     initial_state: Option<String>,
 ) -> CaResult {
     // Add padding for boundary simulation
-    // Pattern can expand `iterations` cells in each direction
+    // Pattern can expand `iterations` cells in each direction from the visible area
     let padding = iterations;
     let simulated_width = visible_width + 2 * padding;
-    let height = iterations + 1;
 
     println!("Visible width: {}, Simulated width: {} (padding: {})", visible_width, simulated_width, padding);
+    println!("Computing generations {} to {}, horizontal offset: {}",
+        start_generation, start_generation + iterations, horizontal_offset);
 
-    // Initialize first row with padding
+    // We need to compute all generations from 0 to start_generation + iterations
+    // (Phase 4b will add caching to avoid recomputing earlier generations)
+    let total_iterations = start_generation + iterations;
+    let buffer_height = total_iterations + 1;
+
+    // Initialize first row (generation 0) with padding
     let mut initial_row = vec![0u32; simulated_width as usize];
 
     if let Some(state_str) = initial_state {
-        // Parse user-provided initial state (centered in simulated space)
-        let start_offset = padding as usize;
+        // Parse user-provided initial state (centered in simulated space, adjusted for horizontal offset)
+        let base_offset = (simulated_width / 2) as i32 - horizontal_offset;
         for (i, ch) in state_str.chars().enumerate() {
-            if i >= visible_width as usize {
-                break;
+            let pos = base_offset + i as i32;
+            if pos >= 0 && (pos as usize) < simulated_width as usize {
+                initial_row[pos as usize] = if ch == '1' { 1 } else { 0 };
             }
-            initial_row[start_offset + i] = if ch == '1' { 1 } else { 0 };
         }
     } else {
-        // Default: single cell in center of simulated space
-        let center = simulated_width as usize / 2;
-        initial_row[center] = 1;
+        // Default: single cell at world position 0 (center), adjusted for horizontal offset
+        let world_center_in_sim = (simulated_width / 2) as i32 - horizontal_offset;
+        if world_center_in_sim >= 0 && (world_center_in_sim as usize) < simulated_width as usize {
+            initial_row[world_center_in_sim as usize] = 1;
+        }
     }
 
-    // Create buffer for all iterations (simulated_width x height)
-    let total_cells = simulated_width * height;
+    // Create buffer for all iterations from gen 0 to start + visible
+    let total_cells = simulated_width * buffer_height;
 
     // Initialize both buffers with first row
     let mut all_data = vec![0u32; total_cells as usize];
     all_data[0..simulated_width as usize].copy_from_slice(&initial_row);
 
-    // Create ping-pong buffers (need STORAGE usage for rendering too)
+    // Create ping-pong buffers (need STORAGE for compute and COPY_SRC for extracting visible range)
     let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("CA State Buffer A"),
         contents: bytemuck::cast_slice(&all_data),
-        usage: wgpu::BufferUsages::STORAGE,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     });
 
     let buffer_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("CA State Buffer B"),
         contents: bytemuck::cast_slice(&all_data),
-        usage: wgpu::BufferUsages::STORAGE,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     });
 
     // Load shader
@@ -138,10 +148,10 @@ pub fn run_ca(
     // Dispatch all iterations with ping-pong buffers
     let workgroups = (simulated_width + 255) / 256;
 
-    for iter in 0..iterations {
+    for iter in 0..total_iterations {
         let params = Params {
             width: simulated_width,
-            height,
+            height: buffer_height,
             rule: rule as u32,
             current_row: iter,
         };
@@ -189,17 +199,44 @@ pub fn run_ca(
         }
     }
 
-    // Submit ALL compute work
+    // Submit compute work
     queue.submit(Some(encoder.finish()));
 
-    // Return the final buffer (still on GPU!) with metadata
-    let final_buffer = if iterations % 2 == 0 { buffer_a } else { buffer_b };
+    // Determine which buffer has the final result
+    let source_buffer = if total_iterations % 2 == 0 { &buffer_a } else { &buffer_b };
+
+    // Create output buffer containing only the visible range (start_generation to start_generation + iterations)
+    let visible_height = iterations + 1;
+    let visible_buffer_size = (simulated_width * visible_height * 4) as wgpu::BufferAddress;
+
+    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("Visible Range Buffer"),
+        size: visible_buffer_size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    // Copy visible range from source buffer
+    let mut copy_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Copy Encoder"),
+    });
+
+    let source_offset = (start_generation * simulated_width * 4) as wgpu::BufferAddress;
+    copy_encoder.copy_buffer_to_buffer(
+        source_buffer,
+        source_offset,
+        &output_buffer,
+        0,
+        visible_buffer_size,
+    );
+
+    queue.submit(Some(copy_encoder.finish()));
 
     CaResult {
-        buffer: final_buffer,
+        buffer: output_buffer,
         simulated_width,
         visible_width,
-        height,
+        height: visible_height,
         padding_left: padding,
     }
 }

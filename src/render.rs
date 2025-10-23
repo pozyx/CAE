@@ -88,6 +88,10 @@ struct RenderParams {
     visible_height: u32,
     simulated_width: u32,
     padding_left: u32,
+    cell_size: u32,
+    window_width: u32,
+    window_height: u32,
+    _padding: u32,
 }
 
 pub struct RenderApp {
@@ -257,6 +261,10 @@ impl RenderApp {
             visible_height: window_height / args.cell_size,
             simulated_width: window_width / args.cell_size,
             padding_left: 0,
+            cell_size: args.cell_size,
+            window_width,
+            window_height,
+            _padding: 0,
         };
 
         let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -355,8 +363,14 @@ impl RenderApp {
         // Clamp offset_y to not go below generation 0
         let clamped_offset_y = self.viewport.offset_y.max(0.0);
 
-        // Calculate number of iterations needed (from offset_y to offset_y + visible_cells_y)
+        // Start generation is the floored offset_y
+        let start_generation = clamped_offset_y as u32;
+
+        // Calculate number of iterations needed (visible generations)
         let iterations = visible_cells_y;
+
+        // Horizontal offset in cells
+        let horizontal_offset = self.viewport.offset_x as i32;
 
         println!("Viewport - offset: ({:.1}, {:.1}), zoom: {:.2}",
             self.viewport.offset_x, clamped_offset_y, self.viewport.zoom);
@@ -367,8 +381,10 @@ impl RenderApp {
             &self.device,
             &self.queue,
             self.args.rule,
+            start_generation,
             iterations,
             visible_cells_x,
+            horizontal_offset,
             self.args.initial_state.clone(),
         );
 
@@ -383,6 +399,10 @@ impl RenderApp {
             visible_height: ca_result.height,
             simulated_width: ca_result.simulated_width,
             padding_left: ca_result.padding_left,
+            cell_size: self.args.cell_size,
+            window_width: self.window_width,
+            window_height: self.window_height,
+            _padding: 0,
         };
 
         self.queue.write_buffer(
@@ -468,6 +488,13 @@ impl RenderApp {
             label: Some("Render Encoder"),
         });
 
+        // Show subtle blue tint when recomputing
+        let clear_color = if self.needs_recompute {
+            wgpu::Color { r: 0.0, g: 0.0, b: 0.05, a: 1.0 }
+        } else {
+            wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
+        };
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -475,12 +502,7 @@ impl RenderApp {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(clear_color),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
