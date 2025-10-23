@@ -50,12 +50,19 @@ pub async fn run_ca(
     let total_cells = width * height;
     let buffer_size = (total_cells * 4) as u64;
 
-    // Initialize storage buffer with first row
+    // Initialize both buffers with first row
     let mut all_data = vec![0u32; total_cells as usize];
     all_data[0..width as usize].copy_from_slice(&initial_row);
 
-    let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("CA State Buffer"),
+    // Create ping-pong buffers
+    let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("CA State Buffer A"),
+        contents: bytemuck::cast_slice(&all_data),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+    });
+
+    let buffer_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("CA State Buffer B"),
         contents: bytemuck::cast_slice(&all_data),
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     });
@@ -74,12 +81,22 @@ pub async fn run_ca(
         source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ca_compute.wgsl").into()),
     });
 
-    // Create bind group layout
+    // Create bind group layout (now with 3 bindings: input, output, params)
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("CA Bind Group Layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -89,7 +106,7 @@ pub async fn run_ca(
                 count: None,
             },
             wgpu::BindGroupLayoutEntry {
-                binding: 1,
+                binding: 2,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
@@ -122,7 +139,7 @@ pub async fn run_ca(
         label: Some("CA Compute Encoder"),
     });
 
-    // Dispatch all iterations in a single command buffer
+    // Dispatch all iterations with ping-pong buffers
     let workgroups = (width + 255) / 256;
 
     for iter in 0..iterations {
@@ -139,16 +156,27 @@ pub async fn run_ca(
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
+        // Ping-pong: even iterations A->B, odd iterations B->A
+        let (read_buffer, write_buffer) = if iter % 2 == 0 {
+            (&buffer_a, &buffer_b)
+        } else {
+            (&buffer_b, &buffer_a)
+        };
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("CA Bind Group"),
             layout: &bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: storage_buffer.as_entire_binding(),
+                    resource: read_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: write_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
@@ -165,8 +193,9 @@ pub async fn run_ca(
         }
     }
 
-    // Copy result to staging buffer
-    encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, buffer_size);
+    // Copy result from the final buffer
+    let final_buffer = if iterations % 2 == 0 { &buffer_a } else { &buffer_b };
+    encoder.copy_buffer_to_buffer(final_buffer, 0, &staging_buffer, 0, buffer_size);
 
     // Submit ALL work at once
     queue.submit(Some(encoder.finish()));
