@@ -22,25 +22,29 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @group(0) @binding(1) var<uniform> params: RenderParams;
 
 struct RenderParams {
-    width: u32,
-    height: u32,
-    _padding1: u32,
-    _padding2: u32,
+    visible_width: u32,
+    visible_height: u32,
+    simulated_width: u32,
+    padding_left: u32,
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Convert texture coordinates to cell coordinates
-    let x = u32(in.tex_coords.x * f32(params.width));
-    let y = u32(in.tex_coords.y * f32(params.height));
+    // Convert texture coordinates to visible cell coordinates
+    let visible_x = u32(in.tex_coords.x * f32(params.visible_width));
+    let visible_y = u32(in.tex_coords.y * f32(params.visible_height));
 
     // Bounds check
-    if (x >= params.width || y >= params.height) {
+    if (visible_x >= params.visible_width || visible_y >= params.visible_height) {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
 
-    // Get cell value
-    let idx = y * params.width + x;
+    // Map visible coordinates to simulated grid coordinates (accounting for padding)
+    let simulated_x = visible_x + params.padding_left;
+    let simulated_y = visible_y;
+
+    // Get cell value from simulated grid buffer
+    let idx = simulated_y * params.simulated_width + simulated_x;
     let cell = ca_state[idx];
 
     // White for alive, black for dead

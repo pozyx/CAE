@@ -52,10 +52,10 @@ const INDICES: &[u16] = &[
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct RenderParams {
-    width: u32,
-    height: u32,
-    _padding1: u32,
-    _padding2: u32,
+    visible_width: u32,
+    visible_height: u32,
+    simulated_width: u32,
+    padding_left: u32,
 }
 
 pub struct RenderApp {
@@ -209,18 +209,18 @@ impl RenderApp {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        // Create params buffer
+        // Create params buffer (will be updated after CA computation)
         let params = RenderParams {
-            width: grid_width,
-            height: grid_height,
-            _padding1: 0,
-            _padding2: 0,
+            visible_width: grid_width,
+            visible_height: grid_height,
+            simulated_width: grid_width,
+            padding_left: 0,
         };
 
         let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Render Params Buffer"),
             contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         Self {
@@ -290,42 +290,43 @@ impl RenderApp {
         // Iterations = height - 1 (first row is initial state)
         let iterations = self.grid_height - 1;
 
-        // Run CA computation with padding
-        let ca_result = pollster::block_on(compute::run_ca(
+        // Run CA computation - result stays on GPU!
+        let ca_result = compute::run_ca(
             &self.device,
             &self.queue,
             self.args.rule,
             iterations,
             self.grid_width,
             self.args.initial_state.clone(),
-        ));
+        );
 
-        // Extract only the visible portion (center of simulated grid)
-        let mut flat_data = Vec::new();
-        let padding_left = ca_result.padding_left as usize;
-        let visible_width = ca_result.visible_width as usize;
+        println!("CA result - Simulated: {}x{}, Visible: {}x{}, Padding: {}",
+            ca_result.simulated_width, ca_result.height,
+            ca_result.visible_width, ca_result.height,
+            ca_result.padding_left);
 
-        for row in &ca_result.data {
-            // Take only the visible portion from each row
-            let visible_slice = &row[padding_left..padding_left + visible_width];
-            flat_data.extend_from_slice(visible_slice);
-        }
+        // Update render params with simulated grid info
+        let params = RenderParams {
+            visible_width: ca_result.visible_width,
+            visible_height: ca_result.height,
+            simulated_width: ca_result.simulated_width,
+            padding_left: ca_result.padding_left,
+        };
 
-        // Create CA buffer
-        let ca_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("CA State Buffer"),
-            contents: bytemuck::cast_slice(&flat_data),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        self.queue.write_buffer(
+            &self.params_buffer,
+            0,
+            bytemuck::cast_slice(&[params]),
+        );
 
-        // Create bind group
+        // Create bind group using GPU buffer directly (zero-copy!)
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Render Bind Group"),
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: ca_buffer.as_entire_binding(),
+                    resource: ca_result.buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -334,10 +335,10 @@ impl RenderApp {
             ],
         });
 
-        self.ca_buffer = Some(ca_buffer);
+        self.ca_buffer = Some(ca_result.buffer);
         self.bind_group = Some(bind_group);
 
-        println!("Computation complete!");
+        println!("Computation complete! (zero-copy GPU rendering)");
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

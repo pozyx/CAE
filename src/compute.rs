@@ -10,12 +10,14 @@ struct Params {
 }
 
 pub struct CaResult {
-    pub data: Vec<Vec<u32>>,
+    pub buffer: wgpu::Buffer,
+    pub simulated_width: u32,
     pub visible_width: u32,
+    pub height: u32,
     pub padding_left: u32,
 }
 
-pub async fn run_ca(
+pub fn run_ca(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     rule: u8,
@@ -51,31 +53,22 @@ pub async fn run_ca(
 
     // Create buffer for all iterations (simulated_width x height)
     let total_cells = simulated_width * height;
-    let buffer_size = (total_cells * 4) as u64;
 
     // Initialize both buffers with first row
     let mut all_data = vec![0u32; total_cells as usize];
     all_data[0..simulated_width as usize].copy_from_slice(&initial_row);
 
-    // Create ping-pong buffers
+    // Create ping-pong buffers (need STORAGE usage for rendering too)
     let buffer_a = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("CA State Buffer A"),
         contents: bytemuck::cast_slice(&all_data),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE,
     });
 
     let buffer_b = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("CA State Buffer B"),
         contents: bytemuck::cast_slice(&all_data),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-    });
-
-    // Create staging buffer for reading results back
-    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("Staging Buffer"),
-        size: buffer_size,
-        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        usage: wgpu::BufferUsages::STORAGE,
     });
 
     // Load shader
@@ -196,39 +189,17 @@ pub async fn run_ca(
         }
     }
 
-    // Copy result from the final buffer
-    let final_buffer = if iterations % 2 == 0 { &buffer_a } else { &buffer_b };
-    encoder.copy_buffer_to_buffer(final_buffer, 0, &staging_buffer, 0, buffer_size);
-
-    // Submit ALL work at once
+    // Submit ALL compute work
     queue.submit(Some(encoder.finish()));
 
-    // Read back results
-    let buffer_slice = staging_buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-        tx.send(result).unwrap();
-    });
-
-    device.poll(wgpu::Maintain::Wait);
-    rx.recv().unwrap().unwrap();
-
-    let data = buffer_slice.get_mapped_range();
-    let result_data: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-    drop(data);
-    staging_buffer.unmap();
-
-    // Convert flat buffer to 2D vector (keep full simulated width for now)
-    let mut result = Vec::new();
-    for row in 0..height {
-        let start = (row * simulated_width) as usize;
-        let end = start + simulated_width as usize;
-        result.push(result_data[start..end].to_vec());
-    }
+    // Return the final buffer (still on GPU!) with metadata
+    let final_buffer = if iterations % 2 == 0 { buffer_a } else { buffer_b };
 
     CaResult {
-        data: result,
+        buffer: final_buffer,
+        simulated_width,
         visible_width,
+        height,
         padding_left: padding,
     }
 }
