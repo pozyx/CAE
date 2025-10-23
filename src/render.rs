@@ -91,6 +91,10 @@ struct RenderParams {
     cell_size: u32,
     window_width: u32,
     window_height: u32,
+    viewport_offset_x: i32,  // Viewport offset for current view
+    viewport_offset_y: i32,  // Viewport offset for current view
+    buffer_offset_x: i32,    // Offset the buffer was computed for
+    buffer_offset_y: i32,    // Offset the buffer was computed for
     _padding: u32,
 }
 
@@ -113,6 +117,7 @@ pub struct RenderApp {
 
     // Viewport state
     viewport: Viewport,
+    buffer_viewport: Viewport,  // Viewport that current CA buffer was computed for
     drag_state: Option<DragState>,
     last_viewport_change: Option<Instant>,
     needs_recompute: bool,
@@ -121,6 +126,17 @@ pub struct RenderApp {
     // Window and cell dimensions
     window_width: u32,
     window_height: u32,
+    current_cell_size: u32,  // Runtime cell size (can be changed by zoom)
+
+    // Track window position to detect which edge is being resized
+    window_position: Option<(i32, i32)>,
+
+    // Buffer metadata (from last CA computation)
+    buffer_simulated_width: u32,
+    buffer_padding_left: u32,
+
+    // Stability: throttle render params updates
+    last_params_update: Option<Instant>,
 }
 
 impl RenderApp {
@@ -264,6 +280,10 @@ impl RenderApp {
             cell_size: args.cell_size,
             window_width,
             window_height,
+            viewport_offset_x: 0,
+            viewport_offset_y: 0,
+            buffer_offset_x: 0,
+            buffer_offset_y: 0,
             _padding: 0,
         };
 
@@ -272,6 +292,8 @@ impl RenderApp {
             contents: bytemuck::cast_slice(&[params]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+
+        let cell_size = args.cell_size;
 
         Self {
             args,
@@ -290,7 +312,14 @@ impl RenderApp {
             bind_group: None,
             bind_group_layout,
 
-            viewport: Viewport::new(),
+            viewport: {
+                let visible_cells_x = window_width as f32 / cell_size as f32;
+                let mut vp = Viewport::new();
+                // Center the origin (world position 0) horizontally
+                vp.offset_x = -visible_cells_x / 2.0;
+                vp
+            },
+            buffer_viewport: Viewport::new(),
             drag_state: None,
             last_viewport_change: None,
             needs_recompute: true,
@@ -298,6 +327,14 @@ impl RenderApp {
 
             window_width,
             window_height,
+            current_cell_size: cell_size,
+
+            window_position: None,
+
+            buffer_simulated_width: window_width / cell_size,
+            buffer_padding_left: 0,
+
+            last_params_update: None,
         }
     }
 
@@ -306,7 +343,7 @@ impl RenderApp {
         let window_height = self.window_height;
 
         let mut window_attributes = Window::default_attributes()
-            .with_title(format!("Cellular Automaton - Rule {}", self.args.rule))
+            .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.args.rule))
             .with_inner_size(winit::dpi::PhysicalSize::new(window_width, window_height));
 
         // Set fullscreen if requested
@@ -357,8 +394,40 @@ impl RenderApp {
         println!("Computing cellular automaton...");
 
         // Calculate visible cells based on window size, cell size, and zoom
-        let visible_cells_x = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as u32;
-        let visible_cells_y = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as u32;
+        // Use ceil to include partial cells at the edges
+        let visible_cells_x = ((self.window_width as f32 / self.current_cell_size as f32) / self.viewport.zoom).ceil() as u32;
+        let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom).ceil() as u32;
+
+        // Safety: limit maximum buffer dimensions to prevent GPU issues
+        // More conservative limits to prevent driver crashes
+        const MAX_CELLS_X: u32 = 5000;
+        const MAX_CELLS_Y: u32 = 5000;
+        const MIN_CELL_SIZE: u32 = 2;  // Prevent extremely small cells
+
+        if self.current_cell_size < MIN_CELL_SIZE {
+            eprintln!("Warning: Cell size {} is too small (minimum {})",
+                self.current_cell_size, MIN_CELL_SIZE);
+            eprintln!("Skipping computation to prevent GPU instability.");
+            return;
+        }
+
+        if visible_cells_x > MAX_CELLS_X || visible_cells_y > MAX_CELLS_Y {
+            eprintln!("Warning: Requested dimensions {}x{} exceed safety limits ({}x{})",
+                visible_cells_x, visible_cells_y, MAX_CELLS_X, MAX_CELLS_Y);
+            eprintln!("Skipping computation to prevent GPU instability.");
+            return;
+        }
+
+        // Also check total cell count (width * height * padding factor)
+        let total_cells = (visible_cells_x as u64 * 3) * visible_cells_y as u64;  // 3x for padding
+        const MAX_TOTAL_CELLS: u64 = 10_000_000;  // 10 million cells max
+
+        if total_cells > MAX_TOTAL_CELLS {
+            eprintln!("Warning: Total cell count {} exceeds limit {}",
+                total_cells, MAX_TOTAL_CELLS);
+            eprintln!("Skipping computation to prevent GPU instability.");
+            return;
+        }
 
         // Clamp offset_y to not go below generation 0
         let clamped_offset_y = self.viewport.offset_y.max(0.0);
@@ -399,11 +468,22 @@ impl RenderApp {
             visible_height: ca_result.height,
             simulated_width: ca_result.simulated_width,
             padding_left: ca_result.padding_left,
-            cell_size: self.args.cell_size,
+            cell_size: self.current_cell_size,
             window_width: self.window_width,
             window_height: self.window_height,
+            viewport_offset_x: self.viewport.offset_x as i32,
+            viewport_offset_y: self.viewport.offset_y as i32,
+            buffer_offset_x: self.viewport.offset_x as i32,  // Buffer just computed for current viewport
+            buffer_offset_y: self.viewport.offset_y as i32,
             _padding: 0,
         };
+
+        // Store the viewport this buffer was computed for
+        self.buffer_viewport = self.viewport.clone();
+
+        // Store buffer metadata for use in update_render_params()
+        self.buffer_simulated_width = ca_result.simulated_width;
+        self.buffer_padding_left = ca_result.padding_left;
 
         self.queue.write_buffer(
             &self.params_buffer,
@@ -439,6 +519,41 @@ impl RenderApp {
         self.needs_recompute = true;
     }
 
+    fn update_render_params(&mut self) {
+        // Throttle params updates to ~60 FPS to reduce GPU load
+        // This prevents excessive buffer writes during rapid viewport changes
+        if let Some(last_update) = self.last_params_update {
+            if last_update.elapsed() < Duration::from_millis(16) {
+                return;  // Skip update if less than 16ms since last update
+            }
+        }
+
+        // Update render params to reflect current viewport vs buffer viewport
+        // This allows immediate visual feedback during dragging/resizing
+        let params = RenderParams {
+            visible_width: ((self.window_width + self.current_cell_size - 1) / self.current_cell_size),  // Ceiling division
+            visible_height: ((self.window_height + self.current_cell_size - 1) / self.current_cell_size),
+            simulated_width: self.buffer_simulated_width,
+            padding_left: self.buffer_padding_left,
+            cell_size: self.current_cell_size,
+            window_width: self.window_width,
+            window_height: self.window_height,
+            viewport_offset_x: self.viewport.offset_x as i32,
+            viewport_offset_y: self.viewport.offset_y as i32,
+            buffer_offset_x: self.buffer_viewport.offset_x as i32,
+            buffer_offset_y: self.buffer_viewport.offset_y as i32,
+            _padding: 0,
+        };
+
+        self.queue.write_buffer(
+            &self.params_buffer,
+            0,
+            bytemuck::cast_slice(&[params]),
+        );
+
+        self.last_params_update = Some(Instant::now());
+    }
+
     fn check_debounce_and_recompute(&mut self) {
         if let Some(last_change) = self.last_viewport_change {
             let debounce_duration = Duration::from_millis(self.args.debounce_ms);
@@ -450,27 +565,56 @@ impl RenderApp {
     }
 
     fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
-        // Calculate zoom factor
-        let zoom_factor = if delta > 0.0 { 1.1 } else { 1.0 / 1.1 };
-        let new_zoom = (self.viewport.zoom * zoom_factor).clamp(self.args.zoom_min, self.args.zoom_max);
+        // Zoom by changing cell pixel size using discrete steps
+        // This prevents jitter from floating point truncation
+        const ZOOM_LEVELS: &[u32] = &[
+            2, 3, 4, 5, 6, 7, 8, 9, 10,
+            12, 14, 16, 18, 20, 24, 28, 32, 36, 40,
+            45, 50, 60, 70, 80, 90, 100
+        ];
 
-        if (new_zoom - self.viewport.zoom).abs() > 0.001 {
-            // Convert cursor position to world space before zoom
-            let visible_cells_x_before = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
-            let visible_cells_y_before = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+        let old_cell_size = self.current_cell_size;
 
-            let cursor_cell_x = self.viewport.offset_x + (cursor_x as f32 / self.window_width as f32) * visible_cells_x_before;
-            let cursor_cell_y = self.viewport.offset_y + (cursor_y as f32 / self.window_height as f32) * visible_cells_y_before;
+        // Find current zoom level index
+        let current_index = ZOOM_LEVELS.iter()
+            .position(|&size| size >= old_cell_size)
+            .unwrap_or(ZOOM_LEVELS.len() - 1);
+
+        // Move to next/previous level
+        let new_index = if delta > 0.0 {
+            // Zoom in - decrease cell size (smaller index)
+            current_index.saturating_sub(1)
+        } else {
+            // Zoom out - increase cell size (larger index)
+            (current_index + 1).min(ZOOM_LEVELS.len() - 1)
+        };
+
+        let new_cell_size = ZOOM_LEVELS[new_index];
+
+        // Only update if cell size actually changed
+        if new_cell_size != old_cell_size {
+            // Calculate world position under cursor before zoom
+            let old_visible_cells_x = self.window_width as f32 / old_cell_size as f32;
+            let old_visible_cells_y = self.window_height as f32 / old_cell_size as f32;
+
+            // Cursor position as fraction of window
+            let cursor_frac_x = cursor_x as f32 / self.window_width as f32;
+            let cursor_frac_y = cursor_y as f32 / self.window_height as f32;
+
+            // World cell position under cursor
+            let world_x_at_cursor = self.viewport.offset_x + cursor_frac_x * old_visible_cells_x;
+            let world_y_at_cursor = self.viewport.offset_y + cursor_frac_y * old_visible_cells_y;
 
             // Apply zoom
-            self.viewport.zoom = new_zoom;
+            self.current_cell_size = new_cell_size;
 
-            // Adjust offset to keep cursor position fixed in world space
-            let visible_cells_x_after = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
-            let visible_cells_y_after = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+            // Calculate new visible cells with new cell size
+            let new_visible_cells_x = self.window_width as f32 / new_cell_size as f32;
+            let new_visible_cells_y = self.window_height as f32 / new_cell_size as f32;
 
-            self.viewport.offset_x = cursor_cell_x - (cursor_x as f32 / self.window_width as f32) * visible_cells_x_after;
-            self.viewport.offset_y = cursor_cell_y - (cursor_y as f32 / self.window_height as f32) * visible_cells_y_after;
+            // Adjust viewport offset to keep the same world position under cursor
+            self.viewport.offset_x = world_x_at_cursor - cursor_frac_x * new_visible_cells_x;
+            self.viewport.offset_y = world_y_at_cursor - cursor_frac_y * new_visible_cells_y;
 
             // Clamp offset_y to not go below 0
             self.viewport.offset_y = self.viewport.offset_y.max(0.0);
@@ -483,6 +627,12 @@ impl RenderApp {
         let surface = self.surface.as_ref().unwrap();
         let output = surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // Update render params every frame to reflect current viewport
+        // This provides immediate visual feedback during dragging/resizing
+        if self.bind_group.is_some() {
+            self.update_render_params();
+        }
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
@@ -527,6 +677,28 @@ impl RenderApp {
     }
 }
 
+impl Drop for RenderApp {
+    fn drop(&mut self) {
+        // Ensure proper cleanup order: drop GPU resources before surface and window
+        // This prevents STATUS_ACCESS_VIOLATION on exit
+
+        // Drop all GPU resources first
+        self.bind_group = None;
+        self.ca_buffer = None;
+
+        // Drop surface configuration before surface
+        self.config = None;
+
+        // Drop surface before window to avoid use-after-free
+        if let Some(surface) = self.surface.take() {
+            drop(surface);
+        }
+
+        // Finally drop window
+        self.window = None;
+    }
+}
+
 impl ApplicationHandler for RenderApp {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.is_none() {
@@ -566,16 +738,57 @@ impl ApplicationHandler for RenderApp {
                 }
             }
             WindowEvent::Resized(physical_size) => {
+                // Update surface configuration for new window size
                 if let Some(config) = &mut self.config {
                     config.width = physical_size.width;
                     config.height = physical_size.height;
                     self.surface.as_ref().unwrap().configure(&self.device, config);
                 }
 
-                // Update window dimensions and mark for recompute
-                // Keep rendering old buffer until new one is computed
+                // Detect which edge(s) are being resized by tracking window position
+                if let Some(window) = &self.window {
+                    if let Ok(outer_position) = window.outer_position() {
+                        let new_pos = (outer_position.x, outer_position.y);
+
+                        if let Some(old_pos) = self.window_position {
+                            let old_width = self.window_width;
+                            let old_height = self.window_height;
+                            let new_width = physical_size.width;
+                            let new_height = physical_size.height;
+
+                            // Calculate visible cells
+                            let old_visible_x = old_width as f32 / self.current_cell_size as f32;
+                            let new_visible_x = new_width as f32 / self.current_cell_size as f32;
+                            let old_visible_y = old_height as f32 / self.current_cell_size as f32;
+                            let new_visible_y = new_height as f32 / self.current_cell_size as f32;
+
+                            // If window position changed, we're resizing from left or top
+                            if new_pos.0 != old_pos.0 {
+                                // Left edge moved - adjust offset to keep right edge fixed
+                                let old_right = self.viewport.offset_x + old_visible_x;
+                                self.viewport.offset_x = old_right - new_visible_x;
+                            }
+
+                            if new_pos.1 != old_pos.1 {
+                                // Top edge moved - adjust offset to keep bottom edge fixed
+                                let old_bottom = self.viewport.offset_y + old_visible_y;
+                                self.viewport.offset_y = old_bottom - new_visible_y;
+                                // Clamp to not go below 0
+                                self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+                            }
+                        }
+
+                        self.window_position = Some(new_pos);
+                    }
+                }
+
+                // Update window dimensions immediately
+                // The shader will handle rendering the old buffer at the new size
+                // without stretching (showing black for newly exposed areas)
                 self.window_width = physical_size.width;
                 self.window_height = physical_size.height;
+
+                // Mark for recompute - after debounce we'll compute for new viewport
                 self.mark_viewport_changed();
             }
             WindowEvent::MouseWheel { delta, .. } => {
@@ -599,8 +812,8 @@ impl ApplicationHandler for RenderApp {
                         let delta_y = position.y - drag.start_y;
 
                         // Convert to cell delta
-                        let visible_cells_x = ((self.window_width as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
-                        let visible_cells_y = ((self.window_height as f32 / self.args.cell_size as f32) / self.viewport.zoom) as f32;
+                        let visible_cells_x = ((self.window_width as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
+                        let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
 
                         let delta_cells_x = -(delta_x as f32 / self.window_width as f32) * visible_cells_x;
                         let delta_cells_y = -(delta_y as f32 / self.window_height as f32) * visible_cells_y;

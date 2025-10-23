@@ -47,8 +47,10 @@ pub fn run_ca(
     let mut initial_row = vec![0u32; simulated_width as usize];
 
     if let Some(state_str) = initial_state {
-        // Parse user-provided initial state (centered in simulated space, adjusted for horizontal offset)
-        let base_offset = (simulated_width / 2) as i32 - horizontal_offset;
+        // Parse user-provided initial state
+        // World cell W maps to buffer index: padding + (W - horizontal_offset)
+        // So initial state (centered at world 0) starts at: padding - horizontal_offset
+        let base_offset = padding as i32 - horizontal_offset;
         for (i, ch) in state_str.chars().enumerate() {
             let pos = base_offset + i as i32;
             if pos >= 0 && (pos as usize) < simulated_width as usize {
@@ -56,10 +58,11 @@ pub fn run_ca(
             }
         }
     } else {
-        // Default: single cell at world position 0 (center), adjusted for horizontal offset
-        let world_center_in_sim = (simulated_width / 2) as i32 - horizontal_offset;
-        if world_center_in_sim >= 0 && (world_center_in_sim as usize) < simulated_width as usize {
-            initial_row[world_center_in_sim as usize] = 1;
+        // Default: single cell at world position 0
+        // World cell 0 maps to buffer index: padding + (0 - horizontal_offset)
+        let world_zero_in_buffer = padding as i32 - horizontal_offset;
+        if world_zero_in_buffer >= 0 && (world_zero_in_buffer as usize) < simulated_width as usize {
+            initial_row[world_zero_in_buffer as usize] = 1;
         }
     }
 

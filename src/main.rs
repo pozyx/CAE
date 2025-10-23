@@ -49,9 +49,28 @@ fn main() {
     env_logger::init();
     let args = Args::parse();
 
-    println!("1D Cellular Automaton Engine");
-    println!("Rule: {}", args.rule);
-    println!("Window: {}x{}", args.width, args.height);
+    let initial_display = args.initial_state.as_ref()
+        .map(|s| if s.len() > 30 { format!("{}...", &s[..27]) } else { s.clone() })
+        .unwrap_or_else(|| "1 (single cell)".to_string());
+
+    // Box width: 48 characters inside the borders
+    // Format: "║ Label: value{padding}║"
+    // "Rule: " = 6 chars, so padding = 48 - 6 - value_len
+    // "Initial State: " = 15 chars, so padding = 48 - 15 - value_len
+
+    println!("╔════════════════════════════════════════════════╗");
+    println!("║   CAE - Cellular Automaton Engine              ║");
+    println!("╠════════════════════════════════════════════════╣");
+    println!("║ Rule: {:<40} ║", args.rule);
+    println!("║ Initial State: {:<31} ║", initial_display);
+    println!("╠════════════════════════════════════════════════╣");
+    println!("║ Controls:                                      ║");
+    println!("║  • Drag mouse: Pan viewport                    ║");
+    println!("║  • Scroll wheel: Zoom in/out                   ║");
+    println!("║  • F11: Toggle fullscreen                      ║");
+    println!("║  • ESC: Exit                                   ║");
+    println!("╚════════════════════════════════════════════════╝");
+    println!();
 
     let event_loop = EventLoop::new().expect("Failed to create event loop");
     event_loop.set_control_flow(ControlFlow::Poll);
