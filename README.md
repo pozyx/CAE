@@ -34,7 +34,7 @@ The application features an interactive viewport with pan and zoom controls, ena
 ### Building from Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/CAE.git
+git clone https://github.com/pozyx/CAE.git
 cd CAE
 cargo build --release
 ```
