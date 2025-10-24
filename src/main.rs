@@ -17,12 +17,12 @@ pub struct Args {
     #[arg(short = 's', long)]
     pub initial_state: Option<String>,
 
-    /// Window width in pixels (default: 800)
-    #[arg(short, long, default_value = "800")]
+    /// Window width in pixels (default: 1280)
+    #[arg(short, long, default_value = "1280")]
     pub width: u32,
 
-    /// Window height in pixels (default: 600)
-    #[arg(long, default_value = "600")]
+    /// Window height in pixels (default: 960)
+    #[arg(long, default_value = "960")]
     pub height: u32,
 
     /// Cell size in pixels (default: 10, each cell is NxN pixels)
