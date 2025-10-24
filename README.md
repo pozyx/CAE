@@ -186,6 +186,9 @@ CAE uses a sophisticated tile-based caching system to avoid redundant GPU comput
 - Cache hit rate: Typically 70-90% during normal navigation
 - Tile computation: Each tile computes from generation 0 (enables future checkpointing)
 
+**Future Improvements**:
+For detailed notes on potential caching optimizations and incremental computation approaches, see [CACHING_NOTES.md](CACHING_NOTES.md).
+
 ## Technical Details
 
 ### Performance Characteristics
