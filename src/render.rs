@@ -886,6 +886,16 @@ impl ApplicationHandler for RenderApp {
                                     }
                                 }
                             }
+                            KeyCode::Digit0 | KeyCode::Numpad0 => {
+                                // Reset viewport to initial state
+                                println!("Resetting viewport to initial state...");
+                                let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+                                self.viewport.offset_x = -visible_cells_x / 2.0;
+                                self.viewport.offset_y = 0.0;
+                                self.viewport.zoom = 1.0;
+                                self.needs_recompute = true;
+                                self.last_viewport_change = Some(Instant::now());
+                            }
                             _ => {}
                         }
                     }

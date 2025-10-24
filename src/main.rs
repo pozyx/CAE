@@ -67,6 +67,7 @@ fn main() {
     println!("║ Controls:                                      ║");
     println!("║  • Drag mouse: Pan viewport                    ║");
     println!("║  • Scroll wheel: Zoom in/out                   ║");
+    println!("║  • 0: Reset viewport to initial position       ║");
     println!("║  • F11: Toggle fullscreen                      ║");
     println!("║  • ESC: Exit                                   ║");
     println!("╚════════════════════════════════════════════════╝");
