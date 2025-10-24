@@ -83,6 +83,7 @@ Options:
 
 - **Drag mouse**: Pan the viewport
 - **Scroll wheel**: Zoom in/out
+- **0**: Reset viewport to initial position (centered, generation 0, zoom 1.0)
 - **F11**: Toggle fullscreen mode
 - **ESC**: Exit application
 
@@ -156,7 +157,6 @@ When the viewport changes, the engine:
 
 ## Roadmap
 
-- Phase 4b: Incremental computation cache with eviction strategy
 - Additional CA variants (2D, totalistic, etc.)
 - Pattern detection and analysis tools
 - Export capabilities (image, video)
