@@ -8,7 +8,16 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(taskkill:*)",
-      "Bash(timeout 5 bash:*)"
+      "Bash(timeout 5 bash:*)",
+      "Bash(cargo doc --no-deps --open)",
+      "Bash(cargo doc:*)",
+      "Bash(git tag:*)",
+      "Bash(gh:*)",
+      "Bash(winget install:*)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" --version)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth login)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" repo create CAE --public --source=. --remote=origin --push)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

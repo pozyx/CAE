@@ -128,6 +128,9 @@ pub struct RenderApp {
     window_height: u32,
     current_cell_size: u32,  // Runtime cell size (can be changed by zoom)
 
+    // Tile cache for incremental computation
+    cache: Option<crate::cache::TileCache>,
+
     // Track window position to detect which edge is being resized
     window_position: Option<(i32, i32)>,
 
@@ -294,6 +297,7 @@ impl RenderApp {
         });
 
         let cell_size = args.cell_size;
+        let cache_tiles = args.cache_tiles;
 
         Self {
             args,
@@ -328,6 +332,12 @@ impl RenderApp {
             window_width,
             window_height,
             current_cell_size: cell_size,
+
+            cache: if cache_tiles > 0 {
+                Some(crate::cache::TileCache::new(cache_tiles))
+            } else {
+                None
+            },
 
             window_position: None,
 
@@ -455,6 +465,7 @@ impl RenderApp {
             visible_cells_x,
             horizontal_offset,
             self.args.initial_state.clone(),
+            self.cache.as_mut(),  // Pass cache as mutable reference
         );
 
         println!("CA result - Simulated: {}x{}, Visible: {}x{}, Padding: {}",
