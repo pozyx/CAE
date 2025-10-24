@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAE - Cellular Automaton Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+        }
+
+        #cae-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 350px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #controls h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #4fc3f7;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        #controls h3 {
+            font-size: 14px;
+            margin-top: 16px;
+            margin-bottom: 12px;
+            color: #81c784;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #ccc;
+        }
+
+        .control-group input[type="number"],
+        .control-group input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .control-group input:focus {
+            outline: none;
+            border-color: #4fc3f7;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .control-group small {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #888;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 8px;
+        }
+
+        button.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+
+        #advanced-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 16px;
+            padding-top: 16px;
+        }
+
+        #advanced-section.collapsed .advanced-content {
+            display: none;
+        }
+
+        #toggle-advanced {
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+        }
+
+        #toggle-advanced::after {
+            content: ' ▼';
+            font-size: 10px;
+        }
+
+        #advanced-section.collapsed #toggle-advanced::after {
+            content: ' ►';
+        }
+
+        #status {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+            color: #81c784;
+            border: 1px solid rgba(129, 199, 132, 0.3);
+        }
+
+        #status.error {
+            color: #e57373;
+            border-color: rgba(229, 115, 115, 0.3);
+        }
+
+        .info-box {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(79, 195, 247, 0.1);
+            border-left: 3px solid #4fc3f7;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        /* Scrollbar styling */
+        #controls::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #controls::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        #controls::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        #controls::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="cae-canvas"></canvas>
+
+    <div id="controls">
+        <h2>CAE - Cellular Automaton Engine</h2>
+
+        <!-- Basic Controls -->
+        <div class="control-group">
+            <label for="rule">Wolfram Rule (0-255)</label>
+            <input type="number" id="rule" min="0" max="255" value="30">
+            <small>Try 30, 90, 110, or 184</small>
+        </div>
+
+        <!-- Options Section -->
+        <div id="advanced-section" class="collapsed">
+            <button id="toggle-advanced" class="secondary" onclick="toggleAdvanced()">Options</button>
+            <div class="advanced-content">
+                <h3>Initial State & Display</h3>
+                <div class="control-group">
+                    <label for="initial-state">Initial State</label>
+                    <input type="text" id="initial-state" placeholder="e.g., 00100 or leave empty" value="">
+                    <small>Binary string or empty for single cell</small>
+                </div>
+
+                <div class="control-group">
+                    <label for="cell-size">Cell Size (pixels)</label>
+                    <input type="number" id="cell-size" min="1" max="50" value="10">
+                </div>
+
+                <h3>Cache Settings</h3>
+                <div class="control-group">
+                    <label for="cache-tiles">Cache Tiles (0 to disable)</label>
+                    <input type="number" id="cache-tiles" min="0" max="256" value="64">
+                    <small>Default 64 tiles ≈ 16MB GPU memory</small>
+                </div>
+
+                <h3>Zoom Limits</h3>
+                <div class="control-group">
+                    <label for="zoom-min">Minimum Zoom</label>
+                    <input type="number" id="zoom-min" min="0.01" max="1" step="0.01" value="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label for="zoom-max">Maximum Zoom</label>
+                    <input type="number" id="zoom-max" min="1" max="50" step="0.5" value="10.0">
+                </div>
+            </div>
+        </div>
+
+        <button onclick="startCAE()">Apply</button>
+        <button class="secondary" onclick="resetView()">Reset Viewport</button>
+
+        <div id="status">&nbsp;</div>
+
+        <div class="info-box">
+            <strong>Controls:</strong><br>
+            • Drag mouse: Pan viewport<br>
+            • Scroll wheel: Zoom in/out<br>
+            • 0 key: Reset viewport
+        </div>
+    </div>
+
+    <script type="module">
+        // Track if the app has been started using sessionStorage (persists across reloads)
+        let appStarted = sessionStorage.getItem('cae_started') === 'true';
+
+        // Restore Settings section collapsed state
+        const settingsCollapsed = sessionStorage.getItem('settings_collapsed');
+        if (settingsCollapsed !== null) {
+            const section = document.getElementById('advanced-section');
+            if (settingsCollapsed === 'false') {
+                section.classList.remove('collapsed');
+            } else {
+                section.classList.add('collapsed');
+            }
+        }
+
+        window.toggleAdvanced = function() {
+            const section = document.getElementById('advanced-section');
+            section.classList.toggle('collapsed');
+
+            // Save the collapsed state to sessionStorage
+            const isCollapsed = section.classList.contains('collapsed');
+            sessionStorage.setItem('settings_collapsed', isCollapsed ? 'true' : 'false');
+        };
+
+        window.startCAE = async function() {
+            const statusEl = document.getElementById('status');
+            statusEl.className = '';
+
+            // Validate rule input
+            const ruleInput = parseInt(document.getElementById('rule').value);
+            if (isNaN(ruleInput) || ruleInput < 0 || ruleInput > 255) {
+                statusEl.className = 'error';
+                statusEl.textContent = 'Error: Rule must be between 0 and 255';
+                return;
+            }
+
+            // Validate initial state input (must be empty or only 0s and 1s)
+            const initialStateInput = document.getElementById('initial-state').value.trim();
+            if (initialStateInput !== '' && !/^[01]+$/.test(initialStateInput)) {
+                statusEl.className = 'error';
+                statusEl.textContent = 'Error: Initial state must be empty or contain only 0s and 1s';
+                return;
+            }
+
+            // If already started, save parameters and reload to restart
+            if (appStarted) {
+                statusEl.textContent = 'Restarting...';
+
+                // Store ALL parameters so we can auto-start after reload
+                const params = {
+                    rule: parseInt(document.getElementById('rule').value),
+                    initialState: document.getElementById('initial-state').value.trim(),
+                    cellSize: parseInt(document.getElementById('cell-size').value),
+                    cacheTiles: parseInt(document.getElementById('cache-tiles').value),
+                    zoomMin: parseFloat(document.getElementById('zoom-min').value),
+                    zoomMax: parseFloat(document.getElementById('zoom-max').value),
+                    autoStart: true
+                };
+                sessionStorage.setItem('cae_restart_params', JSON.stringify(params));
+
+                // Clear the started flag so the reloaded page can start fresh
+                sessionStorage.removeItem('cae_started');
+
+                // Reload the page
+                window.location.reload();
+                return;
+            }
+
+            statusEl.textContent = 'Preparing canvas...';
+
+            try {
+                // CRITICAL: Set canvas size FIRST and wait for browser to process it
+                const canvas = document.getElementById('cae-canvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
+                // Force browser to acknowledge the size change
+                canvas.getBoundingClientRect();
+
+                // Small delay to ensure canvas is properly sized
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                const rule = parseInt(document.getElementById('rule').value);
+                const initialState = document.getElementById('initial-state').value.trim();
+                const cellSize = parseInt(document.getElementById('cell-size').value);
+                const cacheTiles = parseInt(document.getElementById('cache-tiles').value);
+                const zoomMin = parseFloat(document.getElementById('zoom-min').value);
+                const zoomMax = parseFloat(document.getElementById('zoom-max').value);
+
+                // Get canvas size - should now be correct
+                const width = canvas.width;
+                const height = canvas.height;
+
+                statusEl.textContent = 'Loading WASM module...';
+
+                // Import the WASM module
+                const wasm = await import('./pkg/caelib.js');
+                await wasm.default();
+
+                // Store module reference for resetView
+                wasmModule = wasm;
+
+                // Mark as started BEFORE calling WASM (since the event loop won't return)
+                appStarted = true;
+                sessionStorage.setItem('cae_started', 'true');
+
+                // Show ready status
+                statusEl.className = '';
+                statusEl.textContent = 'Ready for interaction...';
+
+                // Start the application (pass null if initialState is empty for Rust Option<String>)
+                // Note: This call transfers control to the event loop and never returns
+                await wasm.start_with_params(
+                    rule,
+                    width,
+                    height,
+                    cellSize,
+                    cacheTiles,
+                    initialState || null,
+                    zoomMin,
+                    zoomMax
+                );
+            } catch (error) {
+                console.error('Failed to start CAE:', error);
+                statusEl.className = 'error';
+                statusEl.textContent = `Error: ${error.message || String(error)}`;
+            }
+        };
+
+        let wasmModule = null; // Store WASM module reference
+
+        window.resetView = function() {
+            if (wasmModule && wasmModule.reset_viewport) {
+                wasmModule.reset_viewport();
+            } else {
+                console.warn('WASM module not loaded yet');
+            }
+        };
+
+        // Add Enter key handlers to all input fields
+        const inputFields = [
+            'rule',
+            'initial-state',
+            'cell-size',
+            'cache-tiles',
+            'zoom-min',
+            'zoom-max'
+        ];
+        inputFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        startCAE();
+                    }
+                });
+            }
+        });
+
+        // Check if we should auto-start after a restart
+        const restartParams = sessionStorage.getItem('cae_restart_params');
+        if (restartParams) {
+            try {
+                const params = JSON.parse(restartParams);
+                sessionStorage.removeItem('cae_restart_params'); // Clear it
+
+                if (params.autoStart) {
+                    // Restore ALL parameters to the form
+                    document.getElementById('rule').value = params.rule;
+                    document.getElementById('initial-state').value = params.initialState || '';
+                    document.getElementById('cell-size').value = params.cellSize;
+                    document.getElementById('cache-tiles').value = params.cacheTiles;
+                    if (params.zoomMin !== undefined) {
+                        document.getElementById('zoom-min').value = params.zoomMin;
+                    }
+                    if (params.zoomMax !== undefined) {
+                        document.getElementById('zoom-max').value = params.zoomMax;
+                    }
+
+                    // Auto-start after a brief delay
+                    setTimeout(() => {
+                        console.log('Auto-starting with restored parameters...');
+                        startCAE();
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('Failed to restore parameters:', e);
+            }
+        }
+
+        // Handle canvas resize to fill viewport
+        function resizeCanvas() {
+            const canvas = document.getElementById('cae-canvas');
+            // Set both CSS size and drawing buffer size
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Initial resize - call immediately and also on DOMContentLoaded
+        resizeCanvas();
+
+        // Also resize when DOM is fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', resizeCanvas);
+        }
+
+        // Resize on window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Auto-start on page load if not restarting
+        if (!sessionStorage.getItem('cae_restart_params')) {
+            // Wait a bit for DOM to be fully ready
+            setTimeout(() => {
+                console.log('Auto-starting with default parameters...');
+                startCAE();
+            }, 100);
+        }
+    </script>
+</body>
+</html>

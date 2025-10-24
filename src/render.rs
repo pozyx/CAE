@@ -1,5 +1,12 @@
 use std::sync::Arc;
+
+// Use web-time for cross-platform time support (works on both desktop and web)
+#[cfg(target_arch = "wasm32")]
+use web_time::{Duration, Instant};
+
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
+
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
@@ -9,7 +16,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{cache::TileCache, compute, Args};
+use crate::{cache::TileCache, compute, Config};
 
 /// Viewport state in world space coordinates
 #[derive(Debug, Clone)]
@@ -99,14 +106,14 @@ struct RenderParams {
 }
 
 pub struct RenderApp {
-    args: Args,
+    config: Config,
     window: Option<Arc<Window>>,
     instance: wgpu::Instance,
     adapter: wgpu::Adapter,
     surface: Option<wgpu::Surface<'static>>,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    config: Option<wgpu::SurfaceConfiguration>,
+    surface_config: Option<wgpu::SurfaceConfiguration>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -143,7 +150,7 @@ pub struct RenderApp {
 }
 
 impl RenderApp {
-    pub async fn new(_event_loop: &EventLoop<()>, args: Args) -> Self {
+    pub async fn new(_event_loop: &EventLoop<()>, config: Config) -> Self {
         // Create wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -176,11 +183,11 @@ impl RenderApp {
             .expect("Failed to create device");
 
         // Initial window dimensions
-        let window_width = args.width;
-        let window_height = args.height;
+        let window_width = config.width;
+        let window_height = config.height;
 
         println!("Initial window size: {}x{} pixels, cell size: {}px",
-            window_width, window_height, args.cell_size);
+            window_width, window_height, config.cell_size);
 
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -227,14 +234,18 @@ impl RenderApp {
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",
+                entry_point: Some("vs_main"),
                 buffers: &[Vertex::desc()],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: "fs_main",
+                entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
+                    // Use Bgra8Unorm for web compatibility (some browsers don't support sRGB)
+                    #[cfg(target_arch = "wasm32")]
+                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    #[cfg(not(target_arch = "wasm32"))]
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
@@ -276,11 +287,11 @@ impl RenderApp {
 
         // Create params buffer (will be updated after CA computation)
         let params = RenderParams {
-            visible_width: window_width / args.cell_size,
-            visible_height: window_height / args.cell_size,
-            simulated_width: window_width / args.cell_size,
+            visible_width: window_width / config.cell_size,
+            visible_height: window_height / config.cell_size,
+            simulated_width: window_width / config.cell_size,
             padding_left: 0,
-            cell_size: args.cell_size,
+            cell_size: config.cell_size,
             window_width,
             window_height,
             viewport_offset_x: 0,
@@ -296,19 +307,19 @@ impl RenderApp {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let cell_size = args.cell_size;
+        let cell_size = config.cell_size;
 
-        let cache_tiles = args.cache_tiles;
+        let cache_tiles = config.cache_tiles;
 
         Self {
-            args,
+            config,
             window: None,
             instance,
             adapter,
             surface: None,
             device,
             queue,
-            config: None,
+            surface_config: None,
             render_pipeline,
             vertex_buffer,
             index_buffer,
@@ -354,11 +365,36 @@ impl RenderApp {
         let window_height = self.window_height;
 
         let mut window_attributes = Window::default_attributes()
-            .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.args.rule))
-            .with_inner_size(winit::dpi::PhysicalSize::new(window_width, window_height));
+            .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.config.rule));
 
-        // Set fullscreen if requested
-        if self.args.fullscreen {
+        // On desktop, set the window size. On web, don't - let it use the canvas's existing size
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            window_attributes = window_attributes.with_inner_size(winit::dpi::PhysicalSize::new(window_width, window_height));
+        }
+
+        // Platform-specific setup
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen::JsCast;
+            use winit::platform::web::WindowAttributesExtWebSys;
+
+            // Get the canvas element from the HTML document
+            let web_window = web_sys::window().expect("Failed to get web window");
+            let document = web_window.document().expect("Failed to get document");
+            let canvas = document
+                .get_element_by_id("cae-canvas")
+                .expect("Failed to find canvas element with id 'cae-canvas'");
+            let canvas: web_sys::HtmlCanvasElement = canvas
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .expect("Element is not a canvas");
+
+            window_attributes = window_attributes.with_canvas(Some(canvas));
+        }
+
+        // Set fullscreen if requested (desktop only)
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.config.fullscreen {
             window_attributes = window_attributes.with_fullscreen(Some(
                 winit::window::Fullscreen::Borderless(None)
             ));
@@ -368,13 +404,29 @@ impl RenderApp {
 
         // Update actual window dimensions (may differ from requested if fullscreen)
         let actual_size = window.inner_size();
-        self.window_width = actual_size.width;
-        self.window_height = actual_size.height;
+
+        // On web, if window reports size 0, fall back to config dimensions
+        if actual_size.width > 0 && actual_size.height > 0 {
+            self.window_width = actual_size.width;
+            self.window_height = actual_size.height;
+        } else {
+            println!("Warning: Window reported size {}x{}, using config dimensions {}x{}",
+                actual_size.width, actual_size.height, self.window_width, self.window_height);
+        }
 
         // Create surface
         let surface = self.instance.create_surface(window.clone()).unwrap();
 
         let surface_caps = surface.get_capabilities(&self.adapter);
+
+        // On web, prefer Bgra8Unorm for compatibility. On desktop, prefer sRGB.
+        #[cfg(target_arch = "wasm32")]
+        let surface_format = surface_caps.formats.iter()
+            .find(|f| **f == wgpu::TextureFormat::Bgra8Unorm)
+            .copied()
+            .unwrap_or(surface_caps.formats[0]);
+
+        #[cfg(not(target_arch = "wasm32"))]
         let surface_format = surface_caps.formats.iter()
             .find(|f| f.is_srgb())
             .copied()
@@ -395,7 +447,7 @@ impl RenderApp {
 
         self.window = Some(window);
         self.surface = Some(surface);
-        self.config = Some(config);
+        self.surface_config = Some(config);
 
         // Now compute the CA
         self.compute_ca();
@@ -462,12 +514,12 @@ impl RenderApp {
             compute::run_ca_with_cache(
                 &self.device,
                 &self.queue,
-                self.args.rule,
+                self.config.rule,
                 start_generation,
                 iterations,
                 visible_cells_x,
                 horizontal_offset,
-                self.args.initial_state.clone(),
+                self.config.initial_state.clone(),
                 cache,
             )
         } else {
@@ -475,12 +527,12 @@ impl RenderApp {
             compute::run_ca(
                 &self.device,
                 &self.queue,
-                self.args.rule,
+                self.config.rule,
                 start_generation,
                 iterations,
                 visible_cells_x,
                 horizontal_offset,
-                self.args.initial_state.clone(),
+                self.config.initial_state.clone(),
             )
         };
 
@@ -583,7 +635,7 @@ impl RenderApp {
 
     fn check_debounce_and_recompute(&mut self) {
         if let Some(last_change) = self.last_viewport_change {
-            let debounce_duration = Duration::from_millis(self.args.debounce_ms);
+            let debounce_duration = Duration::from_millis(self.config.debounce_ms);
             if last_change.elapsed() >= debounce_duration && self.needs_recompute {
                 self.compute_ca();
                 self.last_viewport_change = None;
@@ -591,21 +643,46 @@ impl RenderApp {
         }
     }
 
+    pub fn reset_viewport(&mut self) {
+        // Reset viewport to initial centered state
+        println!("Resetting viewport to initial state...");
+        self.current_cell_size = self.config.cell_size;
+        self.viewport.zoom = 1.0;
+        let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+        self.viewport.offset_x = -visible_cells_x / 2.0;
+        self.viewport.offset_y = 0.0;
+        self.needs_recompute = true;
+        self.last_viewport_change = Some(Instant::now());
+    }
+
     fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
-        // Zoom by changing cell pixel size using discrete steps
-        // This prevents jitter from floating point truncation
-        const ZOOM_LEVELS: &[u32] = &[
-            2, 3, 4, 5, 6, 7, 8, 9, 10,
-            12, 14, 16, 18, 20, 24, 28, 32, 36, 40,
-            45, 50, 60, 70, 80, 90, 100
-        ];
+        // Calculate zoom limits based on config
+        // Zoom > 1.0 means zoomed IN (cells appear bigger)
+        // Zoom < 1.0 means zoomed OUT (cells appear smaller)
+        // zoom_factor = current_cell_size / base_cell_size
+        let base_cell_size = self.config.cell_size;
+        let min_cell_size = (base_cell_size as f32 * self.config.zoom_min).max(1.0) as u32;
+        let max_cell_size = (base_cell_size as f32 * self.config.zoom_max) as u32;
+
+        // Generate zoom levels dynamically based on limits
+        let zoom_levels: Vec<u32> = {
+            let mut levels = vec![
+                2, 3, 4, 5, 6, 7, 8, 9, 10,
+                12, 14, 16, 18, 20, 24, 28, 32, 36, 40,
+                45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200,
+                250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000
+            ];
+            // Filter to only include levels within our zoom range
+            levels.retain(|&size| size >= min_cell_size && size <= max_cell_size);
+            levels
+        };
 
         let old_cell_size = self.current_cell_size;
 
         // Find current zoom level index
-        let current_index = ZOOM_LEVELS.iter()
+        let current_index = zoom_levels.iter()
             .position(|&size| size >= old_cell_size)
-            .unwrap_or(ZOOM_LEVELS.len() - 1);
+            .unwrap_or(zoom_levels.len().saturating_sub(1));
 
         // Move to next/previous level
         let new_index = if delta > 0.0 {
@@ -613,10 +690,10 @@ impl RenderApp {
             current_index.saturating_sub(1)
         } else {
             // Zoom out - increase cell size (larger index)
-            (current_index + 1).min(ZOOM_LEVELS.len() - 1)
+            (current_index + 1).min(zoom_levels.len().saturating_sub(1))
         };
 
-        let new_cell_size = ZOOM_LEVELS[new_index];
+        let new_cell_size = zoom_levels[new_index];
 
         // Only update if cell size actually changed
         if new_cell_size != old_cell_size {
@@ -714,7 +791,7 @@ impl Drop for RenderApp {
         self.ca_buffer = None;
 
         // Drop surface configuration before surface
-        self.config = None;
+        self.surface_config = None;
 
         // Drop surface before window to avoid use-after-free
         if let Some(surface) = self.surface.take() {
@@ -745,6 +822,16 @@ impl ApplicationHandler for RenderApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
+                // Check if viewport reset was requested from web (via JavaScript)
+                #[cfg(target_arch = "wasm32")]
+                {
+                    use std::sync::atomic::Ordering;
+                    if crate::web::RESET_VIEWPORT_REQUESTED.load(Ordering::SeqCst) {
+                        self.reset_viewport();
+                        crate::web::RESET_VIEWPORT_REQUESTED.store(false, Ordering::SeqCst);
+                    }
+                }
+
                 // Check if debounce period has elapsed and recompute if needed
                 self.check_debounce_and_recompute();
 
@@ -752,7 +839,7 @@ impl ApplicationHandler for RenderApp {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => {
                         let size = self.window.as_ref().unwrap().inner_size();
-                        if let Some(config) = &mut self.config {
+                        if let Some(config) = &mut self.surface_config {
                             config.width = size.width;
                             config.height = size.height;
                             self.surface.as_ref().unwrap().configure(&self.device, config);
@@ -766,7 +853,7 @@ impl ApplicationHandler for RenderApp {
             }
             WindowEvent::Resized(physical_size) => {
                 // Update surface configuration for new window size
-                if let Some(config) = &mut self.config {
+                if let Some(config) = &mut self.surface_config {
                     config.width = physical_size.width;
                     config.height = physical_size.height;
                     self.surface.as_ref().unwrap().configure(&self.device, config);
@@ -914,15 +1001,7 @@ impl ApplicationHandler for RenderApp {
                                 }
                             }
                             KeyCode::Digit0 | KeyCode::Numpad0 => {
-                                // Reset viewport to initial state
-                                println!("Resetting viewport to initial state...");
-                                self.current_cell_size = self.args.cell_size;
-                                self.viewport.zoom = 1.0;
-                                let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
-                                self.viewport.offset_x = -visible_cells_x / 2.0;
-                                self.viewport.offset_y = 0.0;
-                                self.needs_recompute = true;
-                                self.last_viewport_change = Some(Instant::now());
+                                self.reset_viewport();
                             }
                             _ => {}
                         }

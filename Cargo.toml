@@ -3,11 +3,36 @@ name = "cae"
 version = "1.2.0"
 edition = "2021"
 
+[lib]
+name = "caelib"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
-wgpu = "22.1"
+wgpu = "23"
 winit = "0.30"
+bytemuck = { version = "1.14", features = ["derive"] }
+
+# Desktop-only dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 pollster = "0.3"
 env_logger = "0.11"
 log = "0.4"
 clap = { version = "4.5", features = ["derive"] }
-bytemuck = { version = "1.14", features = ["derive"] }
+
+# Web-only dependencies
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "23", features = ["webgpu", "webgl", "wgsl"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Window",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlInputElement",
+    "console",
+] }
+web-time = "1.1"
+console_error_panic_hook = "0.1"
+console_log = "1.0"
+log = "0.4"
