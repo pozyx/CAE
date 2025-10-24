@@ -8,11 +8,10 @@ pub const TILE_HEIGHT: u32 = 256;
 
 /// A tile represents a fixed-size cached region of CA computation
 /// Grid-based: tile at (x, y) covers cells [x*256..(x+1)*256] and generations [y*256..(y+1)*256]
+/// The tile's position is tracked by TileKey in the cache HashMap
 #[derive(Debug)]
 pub struct Tile {
     pub buffer: wgpu::Buffer,
-    pub tile_x: i32,           // Grid X coordinate
-    pub tile_y: i32,           // Grid Y coordinate (generation / 256)
     pub simulated_width: u32,  // Buffer width (includes padding)
     pub padding_left: u32,     // Padding on left side
 }

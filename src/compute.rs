@@ -210,8 +210,6 @@ fn compute_tile(
 
     Tile {
         buffer: tile_buffer,
-        tile_x,
-        tile_y,
         simulated_width,
         padding_left: padding,
     }
