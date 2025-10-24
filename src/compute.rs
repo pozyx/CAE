@@ -1,5 +1,4 @@
 use wgpu::util::DeviceExt;
-use crate::cache::{TileCache, TileKey, Tile};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -27,7 +26,6 @@ pub fn run_ca(
     visible_width: u32,
     horizontal_offset: i32,      // Horizontal cell offset (viewport offset_x)
     initial_state: Option<String>,
-    mut cache: Option<&mut TileCache>,  // Optional tile cache (mutable)
 ) -> CaResult {
     // Add padding for boundary simulation
     // Pattern can expand by (start_generation + iterations) cells in each direction
@@ -40,57 +38,6 @@ pub fn run_ca(
     println!("Computing generations {} to {}, horizontal offset: {}",
         start_generation, start_generation + iterations, horizontal_offset);
 
-    // Check cache for this exact tile
-    let horizontal_start = horizontal_offset - padding as i32;
-    let horizontal_end = horizontal_offset + visible_width as i32 + padding as i32;
-    let generation_end = start_generation + iterations;
-
-    if let Some(ref mut cache_ref) = cache {
-        let cache_key = TileKey::new(
-            rule,
-            &initial_state,
-            start_generation,
-            generation_end,
-            horizontal_start,
-            horizontal_end,
-        );
-
-        if let Some(cached_tile) = cache_ref.get(&cache_key) {
-            println!("Using cached tile!");
-            // Return cached result by creating a copy
-            // Note: We need to clone the buffer, which requires a copy operation
-            let buffer_size = (cached_tile.simulated_width * (generation_end - start_generation) * 4) as wgpu::BufferAddress;
-            let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("Cached Tile Output"),
-                size: buffer_size,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Cache Copy Encoder"),
-            });
-
-            encoder.copy_buffer_to_buffer(
-                &cached_tile.buffer,
-                0,
-                &output_buffer,
-                0,
-                buffer_size,
-            );
-
-            queue.submit(Some(encoder.finish()));
-
-            return CaResult {
-                buffer: output_buffer,
-                simulated_width: cached_tile.simulated_width,
-                visible_width,
-                height: generation_end - start_generation,
-                padding_left: cached_tile.padding_left,
-            };
-        }
-    }
-
     // We need to compute all generations from 0 to start_generation + iterations
     // (Phase 4b will add caching to avoid recomputing earlier generations)
     let total_iterations = start_generation + iterations;
@@ -99,7 +46,7 @@ pub fn run_ca(
     // Initialize first row (generation 0) with padding
     let mut initial_row = vec![0u32; simulated_width as usize];
 
-    if let Some(ref state_str) = initial_state {
+    if let Some(state_str) = initial_state {
         // Parse user-provided initial state
         // World cell W maps to buffer index: padding + (W - horizontal_offset)
         // So initial state (centered at world 0) starts at: padding - horizontal_offset
@@ -241,7 +188,7 @@ pub fn run_ca(
     let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Visible Range Buffer"),
         size: visible_buffer_size,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
@@ -260,54 +207,6 @@ pub fn run_ca(
     );
 
     queue.submit(Some(copy_encoder.finish()));
-
-    // Insert into cache if caching is enabled
-    // We need to create a separate buffer for the cache since buffers can't be cloned
-    if let Some(ref mut cache_ref) = cache {
-        let cache_key = TileKey::new(
-            rule,
-            &initial_state,
-            start_generation,
-            generation_end,
-            horizontal_start,
-            horizontal_end,
-        );
-
-        // Create a dedicated cache buffer
-        let cache_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Cached Tile Buffer"),
-            size: visible_buffer_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        // Copy the output buffer to the cache buffer
-        let mut cache_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Cache Insert Encoder"),
-        });
-
-        cache_encoder.copy_buffer_to_buffer(
-            &output_buffer,
-            0,
-            &cache_buffer,
-            0,
-            visible_buffer_size,
-        );
-
-        queue.submit(Some(cache_encoder.finish()));
-
-        let tile = Tile {
-            buffer: cache_buffer,
-            generation_start: start_generation,
-            generation_end,
-            horizontal_start,
-            horizontal_end,
-            simulated_width,
-            padding_left: padding,
-        };
-
-        cache_ref.insert(cache_key, tile);
-    }
 
     CaResult {
         buffer: output_buffer,

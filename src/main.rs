@@ -1,7 +1,6 @@
 use clap::Parser;
 use winit::event_loop::{ControlFlow, EventLoop};
 
-mod cache;
 mod compute;
 mod render;
 
@@ -44,10 +43,6 @@ pub struct Args {
     /// Start in fullscreen mode
     #[arg(short = 'f', long, default_value = "false")]
     pub fullscreen: bool,
-
-    /// Maximum number of tiles to cache (0 to disable caching, default: 64)
-    #[arg(long, default_value = "64")]
-    pub cache_tiles: usize,
 }
 
 fn main() {
