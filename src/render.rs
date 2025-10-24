@@ -9,7 +9,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{compute, Args};
+use crate::{cache::TileCache, compute, Args};
 
 /// Viewport state in world space coordinates
 #[derive(Debug, Clone)]
@@ -127,6 +127,9 @@ pub struct RenderApp {
     window_width: u32,
     window_height: u32,
     current_cell_size: u32,  // Runtime cell size (can be changed by zoom)
+
+    // Tile cache
+    cache: Option<TileCache>,
 
     // Track window position to detect which edge is being resized
     window_position: Option<(i32, i32)>,
@@ -295,6 +298,8 @@ impl RenderApp {
 
         let cell_size = args.cell_size;
 
+        let cache_tiles = args.cache_tiles;
+
         Self {
             args,
             window: None,
@@ -328,6 +333,12 @@ impl RenderApp {
             window_width,
             window_height,
             current_cell_size: cell_size,
+
+            cache: if cache_tiles > 0 {
+                Some(TileCache::new(cache_tiles))
+            } else {
+                None
+            },
 
             window_position: None,
 
@@ -446,16 +457,32 @@ impl RenderApp {
         println!("Visible cells: {}x{}, iterations: {}", visible_cells_x, visible_cells_y, iterations);
 
         // Run CA computation - result stays on GPU!
-        let ca_result = compute::run_ca(
-            &self.device,
-            &self.queue,
-            self.args.rule,
-            start_generation,
-            iterations,
-            visible_cells_x,
-            horizontal_offset,
-            self.args.initial_state.clone(),
-        );
+        let ca_result = if let Some(ref mut cache) = self.cache {
+            // Use tile-based caching
+            compute::run_ca_with_cache(
+                &self.device,
+                &self.queue,
+                self.args.rule,
+                start_generation,
+                iterations,
+                visible_cells_x,
+                horizontal_offset,
+                self.args.initial_state.clone(),
+                cache,
+            )
+        } else {
+            // No caching - use direct computation
+            compute::run_ca(
+                &self.device,
+                &self.queue,
+                self.args.rule,
+                start_generation,
+                iterations,
+                visible_cells_x,
+                horizontal_offset,
+                self.args.initial_state.clone(),
+            )
+        };
 
         println!("CA result - Simulated: {}x{}, Visible: {}x{}, Padding: {}",
             ca_result.simulated_width, ca_result.height,
@@ -889,10 +916,11 @@ impl ApplicationHandler for RenderApp {
                             KeyCode::Digit0 | KeyCode::Numpad0 => {
                                 // Reset viewport to initial state
                                 println!("Resetting viewport to initial state...");
+                                self.current_cell_size = self.args.cell_size;
+                                self.viewport.zoom = 1.0;
                                 let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
                                 self.viewport.offset_x = -visible_cells_x / 2.0;
                                 self.viewport.offset_y = 0.0;
-                                self.viewport.zoom = 1.0;
                                 self.needs_recompute = true;
                                 self.last_viewport_change = Some(Instant::now());
                             }
