@@ -192,7 +192,7 @@ impl RenderApp {
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Render Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/render.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/render.wgsl").into()),
         });
 
         // Create bind group layout

@@ -61,7 +61,7 @@ http-server -p 8000
 ### Option 3: Any static file server
 
 Any HTTP server that can serve static files will work. Just make sure:
-- The `index.html` is at the root
+- The `src/index.html` is accessible at the root URL (use a symlink or configure your server)
 - The `pkg/` directory is accessible
 - MIME types are set correctly (most servers do this automatically)
 
@@ -76,7 +76,7 @@ Any HTTP server that can serve static files will work. Just make sure:
 
 2. **Commit the files:**
    ```bash
-   git add index.html pkg/
+   git add src/index.html pkg/
    git commit -m "Add web version"
    git push
    ```
@@ -96,7 +96,7 @@ Any HTTP server that can serve static files will work. Just make sure:
 
 The web version can be deployed to any static hosting service:
 
-- **Netlify**: Drag and drop the root directory (with `index.html` and `pkg/`)
+- **Netlify**: Drag and drop the directory (with `src/index.html` and `pkg/`)
 - **Vercel**: Deploy via CLI or GitHub integration
 - **Cloudflare Pages**: Connect your repository and deploy
 - **AWS S3**: Upload files and configure bucket for static website hosting
@@ -105,19 +105,21 @@ The web version can be deployed to any static hosting service:
 
 ```
 CAE/
-├── index.html          # Web UI and application entry point
-├── pkg/                # Generated WASM package (created by wasm-pack)
-│   ├── caelib_bg.wasm # WebAssembly binary
-│   ├── caelib.js      # JavaScript bindings
-│   └── ...
 ├── src/
+│   ├── index.html     # Web UI and application entry point
+│   ├── shaders/       # WGSL compute and render shaders
+│   │   ├── ca_compute.wgsl
+│   │   └── render.wgsl
 │   ├── lib.rs         # Shared library code
 │   ├── main.rs        # Desktop entry point
 │   ├── web.rs         # Web entry point (wasm-bindgen exports)
 │   ├── render.rs      # Rendering logic (works on both desktop and web)
 │   ├── compute.rs     # GPU compute shaders
 │   └── cache.rs       # Tile caching system
-├── shaders/           # WGSL compute and render shaders
+├── pkg/               # Generated WASM package (created by wasm-pack)
+│   ├── caelib_bg.wasm # WebAssembly binary
+│   ├── caelib.js      # JavaScript bindings
+│   └── ...
 └── Cargo.toml         # Dependencies with desktop/web features
 ```
 
@@ -189,7 +191,7 @@ wasm-pack build --target web --features web
 # Refresh your browser (the new WASM will be loaded)
 ```
 
-After modifying `index.html`:
+After modifying `src/index.html`:
 - Just refresh your browser (no rebuild needed)
 
 ## Troubleshooting

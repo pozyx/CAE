@@ -87,7 +87,7 @@ fn compute_tile(
     // Load shader
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("CA Compute Shader"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ca_compute.wgsl").into()),
+        source: wgpu::ShaderSource::Wgsl(include_str!("shaders/ca_compute.wgsl").into()),
     });
 
     // Create bind group layout
@@ -439,7 +439,7 @@ pub fn run_ca(
     // Load shader
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("CA Compute Shader"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/ca_compute.wgsl").into()),
+        source: wgpu::ShaderSource::Wgsl(include_str!("shaders/ca_compute.wgsl").into()),
     });
 
     // Create bind group layout (single buffer for both read and write, plus params)
