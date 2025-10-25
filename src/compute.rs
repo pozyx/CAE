@@ -329,6 +329,24 @@ pub fn run_ca_with_cache(
                 // Position in output buffer (with our padding)
                 let x_in_output_buffer = (slice_world_start - viewport_x_start) as u32 + padding;
 
+                // Safety checks to prevent buffer overruns
+                if gen_in_tile >= TILE_HEIGHT || gen_in_viewport >= iterations {
+                    eprintln!("Warning: Generation out of bounds (tile: {}, viewport: {})", gen_in_tile, gen_in_viewport);
+                    continue;
+                }
+
+                if x_in_tile_buffer + slice_width > tile.simulated_width {
+                    eprintln!("Warning: Tile buffer x overflow ({} + {} > {})",
+                        x_in_tile_buffer, slice_width, tile.simulated_width);
+                    continue;
+                }
+
+                if x_in_output_buffer + slice_width > simulated_width {
+                    eprintln!("Warning: Output buffer x overflow ({} + {} > {})",
+                        x_in_output_buffer, slice_width, simulated_width);
+                    continue;
+                }
+
                 let src_offset = ((gen_in_tile * tile.simulated_width + x_in_tile_buffer) * 4) as wgpu::BufferAddress;
                 let dst_offset = ((gen_in_viewport * simulated_width + x_in_output_buffer) * 4) as wgpu::BufferAddress;
                 let copy_size = (slice_width * 4) as wgpu::BufferAddress;

@@ -217,6 +217,7 @@ For detailed notes on potential caching optimizations and incremental computatio
 ### Web Version (WebAssembly)
 
 - **Fullscreen Mode**: The control overlay is not visible in fullscreen mode due to WebGPU canvas compositor limitations. To access controls in fullscreen, press ESC to exit fullscreen mode first.
+- **Memory Access Errors**: Intermittent "memory access out of bounds" errors may occur during panning, likely due to WASM linear memory interaction with GPU buffer cleanup. This is a rare race condition that does not affect functionality and can be safely ignored.
 
 ## Roadmap
 
