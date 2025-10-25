@@ -201,6 +201,15 @@
             border-color: #fff;
         }
 
+        #status a {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        #status a:hover {
+            color: #ccc;
+        }
+
         .info-box {
             margin-top: 12px;
             padding: 8px;
@@ -369,6 +378,18 @@
             if (initialStateInput !== '' && !/^[01]+$/.test(initialStateInput)) {
                 statusEl.className = 'error';
                 statusEl.textContent = 'Error: Initial state must be empty or contain only 0s and 1s';
+                return;
+            }
+
+            // Check for WebGPU support
+            if (!navigator.gpu) {
+                statusEl.className = 'error';
+                statusEl.innerHTML = 'Error: WebGPU is not supported in this browser.<br><br>' +
+                    'Please use:<br>' +
+                    '• Chrome/Edge 113+ (enabled by default)<br>' +
+                    '• Safari 18+ (Technical Preview)<br>' +
+                    '• Firefox 121+ (enable in about:config)<br><br>' +
+                    'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank" style="color: #fff;">caniuse.com/webgpu</a>';
                 return;
             }
 

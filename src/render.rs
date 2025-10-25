@@ -711,11 +711,11 @@ impl RenderApp {
 
         // Move to next/previous level
         let new_index = if delta > 0.0 {
-            // Zoom in - decrease cell size (smaller index)
-            current_index.saturating_sub(1)
-        } else {
-            // Zoom out - increase cell size (larger index)
+            // Zoom in - increase cell size (larger index)
             (current_index + 1).min(zoom_levels.len().saturating_sub(1))
+        } else {
+            // Zoom out - decrease cell size (smaller index)
+            current_index.saturating_sub(1)
         };
 
         let new_cell_size = zoom_levels[new_index];

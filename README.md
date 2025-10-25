@@ -158,7 +158,7 @@ Example: `https://pozyx.github.io/CAE/?rule=110&vx=-50.23&vy=100.00&vz=5`
 - **Drag mouse**: Pan the viewport
 - **Scroll wheel**: Zoom in/out
 - **0 key**: Reset viewport to initial position (centered, generation 0, zoom 1.0)
-- **F11**: Toggle fullscreen mode (desktop only)
+- **F11**: Toggle fullscreen mode
 - **ESC**: Exit fullscreen or close application (desktop)
 
 ### Caching
@@ -264,7 +264,7 @@ For detailed notes on potential caching optimizations and incremental computatio
 The web version requires WebGPU support:
 
 - **Chrome/Edge**: Version 113+ (enabled by default)
-- **Firefox**: Version 121+ (experimental, enable in `about:config`)
+- **Firefox**: Version 121+ (enabled in Windows, for other platforms experimental, enable in `about:config`)
 - **Safari**: Version 18+ (Technical Preview)
 
 Check browser compatibility at: https://caniuse.com/webgpu
@@ -386,7 +386,6 @@ wasm-pack build --target web --out-dir pkg
 - **Rule 30**: Chaotic pattern, used in random number generation
 - **Rule 90**: Sierpiński triangle fractal
 - **Rule 110**: Turing-complete, complex behavior
-- **Rule 184**: Traffic flow simulation
 
 ## Known Limitations
 
@@ -423,12 +422,9 @@ wasm-pack build --target web --out-dir pkg
 
 ## Roadmap
 
-- Additional CA variants (2D, totalistic, etc.)
-- Pattern detection and analysis tools
-- Export capabilities (image, video)
-- Progressive Web App (PWA) support
 - Touch controls for mobile devices
-- Save/load patterns to local storage
+- Additional CA variants (2D, totalistic, etc.)
+- Export capabilities (image, video)
 
 ## Development
 
