@@ -1,5 +1,6 @@
 // Web-specific entry point and initialization
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use winit::event_loop::{ControlFlow, EventLoop};
 
@@ -8,10 +9,48 @@ use crate::{render::RenderApp, Config};
 // Flag to signal viewport reset from JavaScript
 pub(crate) static RESET_VIEWPORT_REQUESTED: AtomicBool = AtomicBool::new(false);
 
+// Viewport state exposed to JavaScript (for URL updates)
+pub(crate) static VIEWPORT_OFFSET_X: Mutex<f32> = Mutex::new(0.0);
+pub(crate) static VIEWPORT_OFFSET_Y: Mutex<f32> = Mutex::new(0.0);
+pub(crate) static VIEWPORT_CELL_SIZE: AtomicU32 = AtomicU32::new(10);
+
+// Initial viewport state (set from URL parameters)
+pub(crate) static INITIAL_VIEWPORT_SET: AtomicBool = AtomicBool::new(false);
+pub(crate) static INITIAL_OFFSET_X: Mutex<f32> = Mutex::new(0.0);
+pub(crate) static INITIAL_OFFSET_Y: Mutex<f32> = Mutex::new(0.0);
+pub(crate) static INITIAL_CELL_SIZE: AtomicU32 = AtomicU32::new(10);
+
 /// Request a viewport reset (called from JavaScript)
 #[wasm_bindgen]
 pub fn reset_viewport() {
     RESET_VIEWPORT_REQUESTED.store(true, Ordering::SeqCst);
+}
+
+/// Get current viewport offset X (called from JavaScript for URL updates)
+#[wasm_bindgen]
+pub fn get_viewport_x() -> f32 {
+    *VIEWPORT_OFFSET_X.lock().unwrap()
+}
+
+/// Get current viewport offset Y (called from JavaScript for URL updates)
+#[wasm_bindgen]
+pub fn get_viewport_y() -> f32 {
+    *VIEWPORT_OFFSET_Y.lock().unwrap()
+}
+
+/// Get current cell size (called from JavaScript for URL updates)
+#[wasm_bindgen]
+pub fn get_cell_size() -> u32 {
+    VIEWPORT_CELL_SIZE.load(Ordering::SeqCst)
+}
+
+/// Set initial viewport state from URL parameters (called from JavaScript)
+#[wasm_bindgen]
+pub fn set_initial_viewport(offset_x: f32, offset_y: f32, cell_size: u32) {
+    *INITIAL_OFFSET_X.lock().unwrap() = offset_x;
+    *INITIAL_OFFSET_Y.lock().unwrap() = offset_y;
+    INITIAL_CELL_SIZE.store(cell_size, Ordering::SeqCst);
+    INITIAL_VIEWPORT_SET.store(true, Ordering::SeqCst);
 }
 
 /// Initialize the web application with default settings

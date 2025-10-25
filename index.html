@@ -306,6 +306,32 @@
         // Track if the app has been started using sessionStorage (persists across reloads)
         let appStarted = sessionStorage.getItem('cae_started') === 'true';
 
+        // Load parameters from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('rule')) {
+            document.getElementById('rule').value = urlParams.get('rule');
+        }
+        if (urlParams.has('state')) {
+            document.getElementById('initial-state').value = urlParams.get('state');
+        }
+        if (urlParams.has('size')) {
+            document.getElementById('cell-size').value = urlParams.get('size');
+        }
+        if (urlParams.has('cache')) {
+            document.getElementById('cache-tiles').value = urlParams.get('cache');
+        }
+        if (urlParams.has('zmin')) {
+            document.getElementById('zoom-min').value = urlParams.get('zmin');
+        }
+        if (urlParams.has('zmax')) {
+            document.getElementById('zoom-max').value = urlParams.get('zmax');
+        }
+
+        // Load viewport parameters from URL if present
+        const viewportX = urlParams.has('vx') ? parseFloat(urlParams.get('vx')) : null;
+        const viewportY = urlParams.has('vy') ? parseFloat(urlParams.get('vy')) : null;
+        const viewportCellSize = urlParams.has('vz') ? parseInt(urlParams.get('vz')) : null;
+
         // Restore Settings section collapsed state
         const settingsCollapsed = sessionStorage.getItem('settings_collapsed');
         if (settingsCollapsed !== null) {
@@ -346,18 +372,38 @@
                 return;
             }
 
+            // Update URL with current parameters (only non-defaults)
+            const urlParams = new URLSearchParams();
+            const rule = parseInt(document.getElementById('rule').value);
+            const initialState = document.getElementById('initial-state').value.trim();
+            const cellSize = parseInt(document.getElementById('cell-size').value);
+            const cacheTiles = parseInt(document.getElementById('cache-tiles').value);
+            const zoomMin = parseFloat(document.getElementById('zoom-min').value);
+            const zoomMax = parseFloat(document.getElementById('zoom-max').value);
+
+            // Only add non-default values to URL
+            if (rule !== 30) urlParams.set('rule', rule);
+            if (initialState !== '') urlParams.set('state', initialState);
+            if (cellSize !== 10) urlParams.set('size', cellSize);
+            if (cacheTiles !== 64) urlParams.set('cache', cacheTiles);
+            if (zoomMin !== 0.1) urlParams.set('zmin', zoomMin);
+            if (zoomMax !== 10.0) urlParams.set('zmax', zoomMax);
+
+            const newUrl = urlParams.toString() ? `?${urlParams.toString()}` : window.location.pathname;
+            window.history.replaceState(null, '', newUrl);
+
             // If already started, save parameters and reload to restart
             if (appStarted) {
                 statusEl.textContent = 'Restarting...';
 
                 // Store ALL parameters so we can auto-start after reload
                 const params = {
-                    rule: parseInt(document.getElementById('rule').value),
-                    initialState: document.getElementById('initial-state').value.trim(),
-                    cellSize: parseInt(document.getElementById('cell-size').value),
-                    cacheTiles: parseInt(document.getElementById('cache-tiles').value),
-                    zoomMin: parseFloat(document.getElementById('zoom-min').value),
-                    zoomMax: parseFloat(document.getElementById('zoom-max').value),
+                    rule,
+                    initialState,
+                    cellSize,
+                    cacheTiles,
+                    zoomMin,
+                    zoomMax,
                     autoStart: true
                 };
                 sessionStorage.setItem('cae_restart_params', JSON.stringify(params));
@@ -404,6 +450,12 @@
                 // Store module reference for resetView
                 wasmModule = wasm;
 
+                // Set initial viewport from URL parameters if present
+                if (viewportX !== null && viewportY !== null && viewportCellSize !== null) {
+                    console.log('Setting initial viewport from URL:', viewportX, viewportY, viewportCellSize);
+                    wasm.set_initial_viewport(viewportX, viewportY, viewportCellSize);
+                }
+
                 // Mark as started BEFORE calling WASM (since the event loop won't return)
                 appStarted = true;
                 sessionStorage.setItem('cae_started', 'true');
@@ -411,6 +463,9 @@
                 // Show ready status
                 statusEl.className = '';
                 statusEl.textContent = 'Ready for interaction...';
+
+                // Start updating URL with viewport changes (runs in parallel with event loop)
+                startViewportUrlUpdater(wasm);
 
                 // Start the application (pass null if initialState is empty for Rust Option<String>)
                 // Note: This call transfers control to the event loop and never returns
@@ -440,6 +495,56 @@
                 console.warn('WASM module not loaded yet');
             }
         };
+
+        // Update URL with current viewport position (debounced)
+        let lastViewportUpdate = 0;
+        let lastViewportState = { x: 0, y: 0, cellSize: 10 };
+
+        function startViewportUrlUpdater(wasm) {
+            function updateViewportUrl() {
+                const now = Date.now();
+                // Update URL at most once per second to avoid performance issues
+                if (now - lastViewportUpdate < 1000) {
+                    requestAnimationFrame(updateViewportUrl);
+                    return;
+                }
+
+                try {
+                    const x = wasm.get_viewport_x();
+                    const y = wasm.get_viewport_y();
+                    const cellSize = wasm.get_cell_size();
+
+                    // Only update if values changed significantly (avoid float precision noise)
+                    if (Math.abs(x - lastViewportState.x) > 0.01 ||
+                        Math.abs(y - lastViewportState.y) > 0.01 ||
+                        cellSize !== lastViewportState.cellSize) {
+
+                        lastViewportState = { x, y, cellSize };
+                        lastViewportUpdate = now;
+
+                        // Get current URL parameters
+                        const urlParams = new URLSearchParams(window.location.search);
+
+                        // Add viewport parameters (always include, no defaults)
+                        urlParams.set('vx', x.toFixed(2));
+                        urlParams.set('vy', y.toFixed(2));
+                        urlParams.set('vz', cellSize);
+
+                        // Update URL without reloading
+                        const newUrl = '?' + urlParams.toString();
+                        if (window.location.search !== newUrl) {
+                            window.history.replaceState(null, '', newUrl);
+                        }
+                    }
+                } catch (e) {
+                    // Ignore errors during URL updates
+                }
+
+                requestAnimationFrame(updateViewportUrl);
+            }
+
+            requestAnimationFrame(updateViewportUrl);
+        }
 
         // Add Enter key handlers to all input fields
         const inputFields = [

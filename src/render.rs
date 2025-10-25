@@ -361,8 +361,26 @@ impl RenderApp {
     }
 
     fn init_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        let window_width = self.window_width;
-        let window_height = self.window_height;
+        // Apply initial viewport from URL parameters if set (web only)
+        #[cfg(target_arch = "wasm32")]
+        {
+            use std::sync::atomic::Ordering;
+            if crate::web::INITIAL_VIEWPORT_SET.load(Ordering::SeqCst) {
+                let initial_x = *crate::web::INITIAL_OFFSET_X.lock().unwrap();
+                let initial_y = *crate::web::INITIAL_OFFSET_Y.lock().unwrap();
+                let initial_cell_size = crate::web::INITIAL_CELL_SIZE.load(Ordering::SeqCst);
+
+                println!("Applying initial viewport from URL: offset=({}, {}), cell_size={}",
+                    initial_x, initial_y, initial_cell_size);
+
+                self.viewport.offset_x = initial_x;
+                self.viewport.offset_y = initial_y;
+                self.current_cell_size = initial_cell_size;
+
+                // Clear the flag so we don't reapply on subsequent inits
+                crate::web::INITIAL_VIEWPORT_SET.store(false, Ordering::SeqCst);
+            }
+        }
 
         let mut window_attributes = Window::default_attributes()
             .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.config.rule));
@@ -370,7 +388,7 @@ impl RenderApp {
         // On desktop, set the window size. On web, don't - let it use the canvas's existing size
         #[cfg(not(target_arch = "wasm32"))]
         {
-            window_attributes = window_attributes.with_inner_size(winit::dpi::PhysicalSize::new(window_width, window_height));
+            window_attributes = window_attributes.with_inner_size(winit::dpi::PhysicalSize::new(self.window_width, self.window_height));
         }
 
         // Platform-specific setup
@@ -596,6 +614,15 @@ impl RenderApp {
     fn mark_viewport_changed(&mut self) {
         self.last_viewport_change = Some(Instant::now());
         self.needs_recompute = true;
+
+        // Update viewport state for JavaScript (web only)
+        #[cfg(target_arch = "wasm32")]
+        {
+            use std::sync::atomic::Ordering;
+            *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = self.viewport.offset_x;
+            *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
+            crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
+        }
     }
 
     fn update_render_params(&mut self) {
