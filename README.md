@@ -212,6 +212,12 @@ For detailed notes on potential caching optimizations and incremental computatio
 - **Rule 110**: Turing-complete, complex behavior
 - **Rule 184**: Traffic flow simulation
 
+## Known Limitations
+
+### Web Version (WebAssembly)
+
+- **Fullscreen Mode**: The control overlay is not visible in fullscreen mode due to WebGPU canvas compositor limitations. To access controls in fullscreen, press ESC to exit fullscreen mode first.
+
 ## Roadmap
 
 - Additional CA variants (2D, totalistic, etc.)

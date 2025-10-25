@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
             overflow: hidden;
             background: #000;
             color: #fff;
@@ -29,107 +29,143 @@
 
         #controls {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(20, 20, 30, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 350px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
+            top: 12px;
+            right: 12px;
+            background: #000;
+            border: 1px solid #fff;
+            padding: 12px;
+            width: 190px;
             z-index: 1000;
-            max-height: 90vh;
+            max-height: calc(100vh - 24px);
             overflow-y: auto;
         }
 
-        #controls h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: #4fc3f7;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        #controls-title {
+            margin-bottom: 8px;
+        }
+
+        #controls-title h2 {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+            margin-bottom: 2px;
+        }
+
+        #controls-title .subtitle {
+            font-size: 9px;
+            color: #666;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        #controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            margin-bottom: 12px;
             padding-bottom: 8px;
+            border-bottom: 1px solid #fff;
+        }
+
+        #controls-header a {
+            color: #666;
+            text-decoration: none;
+        }
+
+        #controls-header a:hover {
+            color: #fff;
+        }
+
+        #controls-header .version {
+            color: #666;
         }
 
         #controls h3 {
-            font-size: 14px;
-            margin-top: 16px;
-            margin-bottom: 12px;
-            color: #81c784;
+            font-size: 12px;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #fff;
+            border-bottom: 1px solid #333;
         }
 
         .control-group {
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
 
         .control-group label {
             display: block;
-            font-size: 13px;
-            margin-bottom: 6px;
-            color: #ccc;
+            font-size: 11px;
+            margin-bottom: 4px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .control-group input[type="number"],
         .control-group input[type="text"] {
             width: 100%;
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            padding: 6px 8px;
+            background: #000;
+            border: 1px solid #666;
             color: #fff;
-            font-size: 14px;
+            font-size: 13px;
+            font-family: monospace;
         }
 
         .control-group input:focus {
             outline: none;
-            border-color: #4fc3f7;
-            background: rgba(255, 255, 255, 0.08);
+            border-color: #fff;
         }
 
         .control-group small {
             display: block;
-            margin-top: 4px;
-            font-size: 11px;
-            color: #888;
+            margin-top: 3px;
+            font-size: 10px;
+            color: #666;
         }
 
         button {
             width: 100%;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 4px;
+            padding: 6px 8px;
+            background: #000;
+            border: 1px solid #fff;
             color: #fff;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: normal;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 8px;
+            margin-top: 6px;
+            font-family: monospace;
         }
 
         button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: #fff;
+            color: #000;
         }
 
         button:active {
-            transform: translateY(0);
+            background: #ccc;
         }
 
         button.secondary {
-            background: rgba(255, 255, 255, 0.1);
-            margin-top: 8px;
+            border-color: #666;
+            color: #999;
         }
 
         button.secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+            background: #666;
+            color: #fff;
+            border-color: #666;
         }
 
         #advanced-section {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 16px;
-            padding-top: 16px;
+            border-top: 1px solid #333;
+            margin-top: 12px;
+            padding-top: 12px;
         }
 
         #advanced-section.collapsed .advanced-content {
@@ -137,15 +173,14 @@
         }
 
         #toggle-advanced {
-            background: rgba(255, 255, 255, 0.05);
-            font-size: 13px;
-            padding: 8px 12px;
-            margin-bottom: 12px;
+            font-size: 11px;
+            padding: 6px 8px;
+            margin-bottom: 10px;
         }
 
         #toggle-advanced::after {
             content: ' ▼';
-            font-size: 10px;
+            font-size: 9px;
         }
 
         #advanced-section.collapsed #toggle-advanced::after {
@@ -153,48 +188,48 @@
         }
 
         #status {
-            margin-top: 16px;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-            font-size: 12px;
-            color: #81c784;
-            border: 1px solid rgba(129, 199, 132, 0.3);
+            margin-top: 12px;
+            padding: 8px;
+            background: #000;
+            font-size: 10px;
+            color: #999;
+            border: 1px solid #333;
         }
 
         #status.error {
-            color: #e57373;
-            border-color: rgba(229, 115, 115, 0.3);
+            color: #fff;
+            border-color: #fff;
         }
 
         .info-box {
-            margin-top: 16px;
-            padding: 12px;
-            background: rgba(79, 195, 247, 0.1);
-            border-left: 3px solid #4fc3f7;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #ccc;
-            line-height: 1.5;
+            margin-top: 12px;
+            padding: 8px;
+            background: #000;
+            border: 1px solid #333;
+            font-size: 10px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .info-box strong {
+            color: #999;
         }
 
         /* Scrollbar styling */
         #controls::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         #controls::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
+            background: #000;
         }
 
         #controls::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            background: #333;
         }
 
         #controls::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #666;
         }
     </style>
 </head>
@@ -202,7 +237,14 @@
     <canvas id="cae-canvas"></canvas>
 
     <div id="controls">
-        <h2>CAE - Cellular Automaton Engine</h2>
+        <div id="controls-title">
+            <h2>CAE</h2>
+            <div class="subtitle">Cellular Automaton Engine</div>
+        </div>
+        <div id="controls-header">
+            <a href="https://github.com/pozyx/CAE" target="_blank">github.com/pozyx/CAE</a>
+            <span class="version">v1.2.0</span>
+        </div>
 
         <!-- Basic Controls -->
         <div class="control-group">
