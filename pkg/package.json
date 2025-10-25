@@ -1,0 +1,15 @@
+{
+  "name": "cae",
+  "type": "module",
+  "version": "2.0.0",
+  "files": [
+    "caelib_bg.wasm",
+    "caelib.js",
+    "caelib.d.ts"
+  ],
+  "main": "caelib.js",
+  "types": "caelib.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
