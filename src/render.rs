@@ -152,7 +152,7 @@ pub struct RenderApp {
 impl RenderApp {
     pub async fn new(_event_loop: &EventLoop<()>, config: Config) -> Self {
         // Create wgpu instance
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
@@ -170,15 +170,13 @@ impl RenderApp {
         println!("Using GPU: {} ({:?})", info.name, info.backend);
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("Main Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("Main Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                trace: Default::default(),
+            })
             .await
             .expect("Failed to create device");
 
@@ -784,6 +782,7 @@ impl RenderApp {
                         }),
                         store: wgpu::StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
