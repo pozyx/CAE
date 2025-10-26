@@ -448,12 +448,25 @@ impl RenderApp {
             .copied()
             .unwrap_or(surface_caps.formats[0]);
 
+        // Choose best present mode for smooth rendering
+        // Prefer Mailbox (triple buffering) for low latency smooth panning
+        // Fall back to AutoVsync, then Fifo (VSync)
+        let present_mode = surface_caps.present_modes.iter()
+            .copied()
+            .find(|mode| matches!(mode, wgpu::PresentMode::Mailbox))
+            .or_else(|| surface_caps.present_modes.iter()
+                .copied()
+                .find(|mode| matches!(mode, wgpu::PresentMode::AutoVsync)))
+            .unwrap_or(wgpu::PresentMode::Fifo);
+
+        println!("Using present mode: {:?}", present_mode);
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: self.window_width,
             height: self.window_height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
