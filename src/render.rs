@@ -308,6 +308,7 @@ impl RenderApp {
         let cell_size = config.cell_size;
 
         let cache_tiles = config.cache_tiles;
+        let tile_size = config.tile_size;
 
         Self {
             config,
@@ -344,7 +345,7 @@ impl RenderApp {
             current_cell_size: cell_size,
 
             cache: if cache_tiles > 0 {
-                Some(TileCache::new(cache_tiles))
+                Some(TileCache::new(cache_tiles, tile_size))
             } else {
                 None
             },

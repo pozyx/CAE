@@ -2,10 +2,6 @@ use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-// Tile dimensions (fixed size for all tiles)
-pub const TILE_WIDTH: u32 = 256;
-pub const TILE_HEIGHT: u32 = 256;
-
 /// A tile represents a fixed-size cached region of CA computation
 /// Grid-based: tile at (x, y) covers cells [x*256..(x+1)*256] and generations [y*256..(y+1)*256]
 /// The tile's position is tracked by TileKey in the cache HashMap
@@ -54,6 +50,9 @@ pub struct TileCache {
     /// Maximum number of tiles to cache
     max_tiles: usize,
 
+    /// Tile dimensions (tiles are tile_size × tile_size cells)
+    pub tile_size: u32,
+
     /// Cached tiles indexed by key
     tiles: HashMap<TileKey, Tile>,
 
@@ -66,11 +65,12 @@ pub struct TileCache {
 }
 
 impl TileCache {
-    pub fn new(max_tiles: usize) -> Self {
+    pub fn new(max_tiles: usize, tile_size: u32) -> Self {
         println!("Initializing TileCache with max_tiles={}, tile_size={}x{}",
-            max_tiles, TILE_WIDTH, TILE_HEIGHT);
+            max_tiles, tile_size, tile_size);
         TileCache {
             max_tiles,
+            tile_size,
             tiles: HashMap::new(),
             lru_queue: VecDeque::new(),
             hits: 0,
@@ -98,7 +98,7 @@ impl TileCache {
     pub fn insert(&mut self, key: TileKey, tile: Tile) {
         println!("Cache INSERT: tile ({}, {}), buffer_size={}x{} (cache_size={}/{})",
             key.tile_x, key.tile_y,
-            tile.simulated_width, TILE_HEIGHT,
+            tile.simulated_width, self.tile_size,
             self.tiles.len(), self.max_tiles);
 
         // If key already exists, remove it from LRU queue

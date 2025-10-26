@@ -40,6 +40,9 @@ pub struct Config {
 
     /// Maximum number of tiles to cache (0 to disable caching)
     pub cache_tiles: usize,
+
+    /// Tile size for caching (tiles are NxN cells)
+    pub tile_size: u32,
 }
 
 impl Default for Config {
@@ -55,6 +58,7 @@ impl Default for Config {
             debounce_ms: 100,
             fullscreen: false,
             cache_tiles: 64,
+            tile_size: 256,
         }
     }
 }

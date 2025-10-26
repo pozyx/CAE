@@ -1,5 +1,5 @@
 use wgpu::util::DeviceExt;
-use crate::cache::{Tile, TileKey, TileCache, TILE_WIDTH, TILE_HEIGHT};
+use crate::cache::{Tile, TileKey, TileCache};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -18,18 +18,19 @@ pub struct CaResult {
     pub padding_left: u32,
 }
 
-/// Compute a single tile from generation 0 to TILE_HEIGHT
-/// Tiles are fixed 256x256 regions identified by grid coordinates (tile_x, tile_y)
+/// Compute a single tile from generation 0 to tile_size
+/// Tiles are tile_size x tile_size regions identified by grid coordinates (tile_x, tile_y)
 fn compute_tile(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     rule: u8,
     tile_x: i32,
     tile_y: i32,
+    tile_size: u32,
     initial_state: &Option<String>,
 ) -> Tile {
-    let tile_width = TILE_WIDTH;
-    let tile_height = TILE_HEIGHT;
+    let tile_width = tile_size;
+    let tile_height = tile_size;
 
     // Calculate world-space horizontal range for this tile
     let tile_start_x = tile_x * tile_width as i32;
@@ -237,10 +238,11 @@ pub fn run_ca_with_cache(
     let viewport_y_end = (start_generation + iterations) as i32;
 
     // Determine which tiles we need
-    let tile_x_start = viewport_x_start.div_euclid(TILE_WIDTH as i32);
-    let tile_x_end = (viewport_x_end - 1).div_euclid(TILE_WIDTH as i32);
-    let tile_y_start = viewport_y_start.div_euclid(TILE_HEIGHT as i32);
-    let tile_y_end = (viewport_y_end - 1).div_euclid(TILE_HEIGHT as i32);
+    let tile_size = cache.tile_size as i32;
+    let tile_x_start = viewport_x_start.div_euclid(tile_size);
+    let tile_x_end = (viewport_x_end - 1).div_euclid(tile_size);
+    let tile_y_start = viewport_y_start.div_euclid(tile_size);
+    let tile_y_end = (viewport_y_end - 1).div_euclid(tile_size);
 
     println!("Viewport needs tiles: X={}..{}, Y={}..{}",
         tile_x_start, tile_x_end, tile_y_start, tile_y_end);
@@ -255,7 +257,7 @@ pub fn run_ca_with_cache(
             if cache.get(&tile_key).is_none() {
                 // Cache miss - compute new tile and insert
                 println!("Computing new tile ({}, {})", tile_x, tile_y);
-                let new_tile = compute_tile(device, queue, rule, tile_x, tile_y, &initial_state);
+                let new_tile = compute_tile(device, queue, rule, tile_x, tile_y, cache.tile_size, &initial_state);
                 cache.insert(tile_key, new_tile);
             } else {
                 println!("Using cached tile ({}, {})", tile_x, tile_y);
@@ -294,10 +296,10 @@ pub fn run_ca_with_cache(
             let tile = cache.get(&tile_key).expect("Tile should be in cache");
 
             // Calculate overlap between tile and viewport
-            let tile_world_x_start = tile_x * TILE_WIDTH as i32;
-            let tile_world_x_end = tile_world_x_start + TILE_WIDTH as i32;
-            let tile_gen_start = tile_y * TILE_HEIGHT as i32;
-            let tile_gen_end = tile_gen_start + TILE_HEIGHT as i32;
+            let tile_world_x_start = tile_x * tile_size;
+            let tile_world_x_end = tile_world_x_start + tile_size;
+            let tile_gen_start = tile_y * tile_size;
+            let tile_gen_end = tile_gen_start + tile_size;
 
             // Find intersection with viewport
             let copy_x_start = viewport_x_start.max(tile_world_x_start);
@@ -330,7 +332,7 @@ pub fn run_ca_with_cache(
                 let x_in_output_buffer = (slice_world_start - viewport_x_start) as u32 + padding;
 
                 // Safety checks to prevent buffer overruns
-                if gen_in_tile >= TILE_HEIGHT || gen_in_viewport >= iterations {
+                if gen_in_tile >= tile_size as u32 || gen_in_viewport >= iterations {
                     eprintln!("Warning: Generation out of bounds (tile: {}, viewport: {})", gen_in_tile, gen_in_viewport);
                     continue;
                 }

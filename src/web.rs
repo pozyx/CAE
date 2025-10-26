@@ -75,6 +75,7 @@ pub async fn start() -> Result<(), JsValue> {
         config.height,
         config.cell_size,
         config.cache_tiles,
+        config.tile_size,
         config.initial_state.clone(),
         config.zoom_min,
         config.zoom_max,
@@ -90,6 +91,7 @@ pub async fn start_with_params(
     height: u32,
     cell_size: u32,
     cache_tiles: usize,
+    tile_size: u32,
     initial_state: Option<String>,
     zoom_min: f32,
     zoom_max: f32,
@@ -117,6 +119,7 @@ pub async fn start_with_params(
         debounce_ms: 100,
         fullscreen: false,
         cache_tiles,
+        tile_size,
     };
 
     let event_loop = EventLoop::new()
