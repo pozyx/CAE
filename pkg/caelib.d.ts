@@ -29,7 +29,7 @@ export function start(): Promise<void>;
  * Start the application with specific parameters
  * Called from JavaScript with values from the UI form
  */
-export function start_with_params(rule: number, width: number, height: number, cell_size: number, cache_tiles: number, tile_size: number, initial_state: string | null | undefined, zoom_min: number, zoom_max: number): Promise<void>;
+export function start_with_params(rule: number, width: number, height: number, cell_size: number, cache_tiles: number, initial_state: string | null | undefined, zoom_min: number, zoom_max: number): Promise<void>;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -39,7 +39,7 @@ export interface InitOutput {
   readonly get_viewport_y: () => number;
   readonly get_cell_size: () => number;
   readonly start: () => any;
-  readonly start_with_params: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => any;
+  readonly start_with_params: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => any;
   readonly set_initial_viewport: (a: number, b: number, c: number) => void;
   readonly reset_viewport: () => void;
   readonly __externref_table_alloc: () => number;
@@ -50,8 +50,8 @@ export interface InitOutput {
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_6: WebAssembly.Table;
   readonly closure525_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure1176_externref_shim: (a: number, b: number, c: any) => void;
   readonly closure527_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure1176_externref_shim: (a: number, b: number, c: any) => void;
   readonly wasm_bindgen__convert__closures_____invoke__h83a3ad27906d3133: (a: number, b: number) => void;
   readonly closure3022_externref_shim: (a: number, b: number, c: any, d: any) => void;
   readonly __wbindgen_start: () => void;

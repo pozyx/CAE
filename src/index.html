@@ -285,12 +285,6 @@
                     <small>Default 64 tiles ≈ 16MB GPU memory</small>
                 </div>
 
-                <div class="control-group">
-                    <label for="tile-size">Tile Size (cells)</label>
-                    <input type="number" id="tile-size" min="64" max="1024" step="64" value="256">
-                    <small>Tile size NxN cells (default 256)</small>
-                </div>
-
                 <h3>Zoom Limits</h3>
                 <div class="control-group">
                     <label for="zoom-min">Minimum Zoom</label>
@@ -334,9 +328,6 @@
         }
         if (urlParams.has('cache')) {
             document.getElementById('cache-tiles').value = urlParams.get('cache');
-        }
-        if (urlParams.has('tsize')) {
-            document.getElementById('tile-size').value = urlParams.get('tsize');
         }
         if (urlParams.has('zmin')) {
             document.getElementById('zoom-min').value = urlParams.get('zmin');
@@ -408,7 +399,6 @@
             const initialState = document.getElementById('initial-state').value.trim();
             const cellSize = parseInt(document.getElementById('cell-size').value);
             const cacheTiles = parseInt(document.getElementById('cache-tiles').value);
-            const tileSize = parseInt(document.getElementById('tile-size').value);
             const zoomMin = parseFloat(document.getElementById('zoom-min').value);
             const zoomMax = parseFloat(document.getElementById('zoom-max').value);
 
@@ -417,7 +407,6 @@
             if (initialState !== '') urlParams.set('state', initialState);
             if (cellSize !== 10) urlParams.set('size', cellSize);
             if (cacheTiles !== 64) urlParams.set('cache', cacheTiles);
-            if (tileSize !== 256) urlParams.set('tsize', tileSize);
             if (zoomMin !== 0.1) urlParams.set('zmin', zoomMin);
             if (zoomMax !== 10.0) urlParams.set('zmax', zoomMax);
 
@@ -434,7 +423,6 @@
                     initialState,
                     cellSize,
                     cacheTiles,
-                    tileSize,
                     zoomMin,
                     zoomMax,
                     autoStart: true
@@ -467,7 +455,6 @@
                 const initialState = document.getElementById('initial-state').value.trim();
                 const cellSize = parseInt(document.getElementById('cell-size').value);
                 const cacheTiles = parseInt(document.getElementById('cache-tiles').value);
-                const tileSize = parseInt(document.getElementById('tile-size').value);
                 const zoomMin = parseFloat(document.getElementById('zoom-min').value);
                 const zoomMax = parseFloat(document.getElementById('zoom-max').value);
 
@@ -509,7 +496,6 @@
                     height,
                     cellSize,
                     cacheTiles,
-                    tileSize,
                     initialState || null,
                     zoomMin,
                     zoomMax
@@ -587,7 +573,6 @@
             'initial-state',
             'cell-size',
             'cache-tiles',
-            'tile-size',
             'zoom-min',
             'zoom-max'
         ];
@@ -615,9 +600,6 @@
                     document.getElementById('initial-state').value = params.initialState || '';
                     document.getElementById('cell-size').value = params.cellSize;
                     document.getElementById('cache-tiles').value = params.cacheTiles;
-                    if (params.tileSize !== undefined) {
-                        document.getElementById('tile-size').value = params.tileSize;
-                    }
                     if (params.zoomMin !== undefined) {
                         document.getElementById('zoom-min').value = params.zoomMin;
                     }
