@@ -46,11 +46,15 @@ struct CliArgs {
     /// Maximum number of tiles to cache (0 to disable caching, default: 64)
     #[arg(long, default_value = "64")]
     cache_tiles: usize,
+
+    /// Tile size for caching (tiles are NxN cells, default: 256)
+    #[arg(long, default_value = "256")]
+    tile_size: u32,
 }
 
 impl From<CliArgs> for Config {
     fn from(cli: CliArgs) -> Self {
-        Config {
+        let mut config = Config {
             rule: cli.rule,
             initial_state: cli.initial_state,
             width: cli.width,
@@ -61,7 +65,11 @@ impl From<CliArgs> for Config {
             debounce_ms: cli.debounce_ms,
             fullscreen: cli.fullscreen,
             cache_tiles: cli.cache_tiles,
-        }
+            tile_size: cli.tile_size,
+        };
+        // Validate and clamp tile_size
+        config.validate_tile_size();
+        config
     }
 }
 

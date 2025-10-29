@@ -2,11 +2,22 @@ use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
-// Tile dimensions (fixed size for all tiles)
-pub const TILE_WIDTH: u32 = 256;
-pub const TILE_HEIGHT: u32 = 256;
+// Logging macro that works in both desktop and web
+#[cfg(target_arch = "wasm32")]
+macro_rules! log_info {
+    ($($arg:tt)*) => {
+        log::info!($($arg)*);
+    };
+}
 
-/// A tile represents a fixed-size cached region of CA computation
+#[cfg(not(target_arch = "wasm32"))]
+macro_rules! log_info {
+    ($($arg:tt)*) => {
+        println!($($arg)*);
+    };
+}
+
+/// A tile represents a cached region of CA computation
 /// Grid-based: tile at (x, y) covers cells [x*256..(x+1)*256] and generations [y*256..(y+1)*256]
 /// The tile's position is tracked by TileKey in the cache HashMap
 #[derive(Debug)]
@@ -54,6 +65,9 @@ pub struct TileCache {
     /// Maximum number of tiles to cache
     max_tiles: usize,
 
+    /// Tile dimensions (tiles are tile_size × tile_size cells)
+    pub tile_size: u32,
+
     /// Cached tiles indexed by key
     tiles: HashMap<TileKey, Tile>,
 
@@ -66,11 +80,20 @@ pub struct TileCache {
 }
 
 impl TileCache {
-    pub fn new(max_tiles: usize) -> Self {
-        println!("Initializing TileCache with max_tiles={}, tile_size={}x{}",
-            max_tiles, TILE_WIDTH, TILE_HEIGHT);
+    pub fn new(max_tiles: usize, tile_size: u32) -> Self {
+        // Validate tile_size
+        let tile_size = if tile_size == 0 {
+            eprintln!("Warning: tile_size cannot be 0, using default 256");
+            256
+        } else {
+            tile_size
+        };
+
+        log_info!("TileCache: {} tiles, {}×{} cells (~{} KB/tile)",
+            max_tiles, tile_size, tile_size, (tile_size * tile_size * 4) / 1024);
         TileCache {
             max_tiles,
+            tile_size,
             tiles: HashMap::new(),
             lru_queue: VecDeque::new(),
             hits: 0,
@@ -83,22 +106,22 @@ impl TileCache {
         if self.tiles.contains_key(key) {
             self.touch(key);
             self.hits += 1;
-            println!("Cache HIT: tile ({}, {}) (hits={}, misses={})",
+            log_info!("Cache HIT: tile ({}, {}) (hits={}, misses={})",
                 key.tile_x, key.tile_y, self.hits, self.misses);
             return self.tiles.get(key);
         }
 
         self.misses += 1;
-        println!("Cache MISS: tile ({}, {}) (hits={}, misses={})",
+        log_info!("Cache MISS: tile ({}, {}) (hits={}, misses={})",
             key.tile_x, key.tile_y, self.hits, self.misses);
         None
     }
 
     /// Insert a tile into the cache
     pub fn insert(&mut self, key: TileKey, tile: Tile) {
-        println!("Cache INSERT: tile ({}, {}), buffer_size={}x{} (cache_size={}/{})",
+        log_info!("Cache INSERT: tile ({}, {}), buffer_size={}x{} (cache_size={}/{})",
             key.tile_x, key.tile_y,
-            tile.simulated_width, TILE_HEIGHT,
+            tile.simulated_width, self.tile_size,
             self.tiles.len(), self.max_tiles);
 
         // If key already exists, remove it from LRU queue
@@ -110,7 +133,7 @@ impl TileCache {
         while self.tiles.len() >= self.max_tiles && !self.lru_queue.is_empty() {
             if let Some(evict_key) = self.lru_queue.pop_back() {
                 self.tiles.remove(&evict_key);
-                println!("Cache EVICT: tile ({}, {}) (cache_size={}/{})",
+                log_info!("Cache EVICT: tile ({}, {}) (cache_size={}/{})",
                     evict_key.tile_x, evict_key.tile_y,
                     self.tiles.len(), self.max_tiles);
             }

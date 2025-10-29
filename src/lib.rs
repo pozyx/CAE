@@ -40,6 +40,27 @@ pub struct Config {
 
     /// Maximum number of tiles to cache (0 to disable caching)
     pub cache_tiles: usize,
+
+    /// Tile size for caching (tiles are NxN cells, must be > 0)
+    pub tile_size: u32,
+}
+
+impl Config {
+    /// Validate and clamp tile_size to safe range
+    pub fn validate_tile_size(&mut self) {
+        if self.tile_size == 0 {
+            eprintln!("Warning: tile_size cannot be 0, setting to default 256");
+            self.tile_size = 256;
+        }
+        if self.tile_size < 64 {
+            eprintln!("Warning: tile_size {} too small, clamping to 64", self.tile_size);
+            self.tile_size = 64;
+        }
+        if self.tile_size > 1024 {
+            eprintln!("Warning: tile_size {} too large, clamping to 1024", self.tile_size);
+            self.tile_size = 1024;
+        }
+    }
 }
 
 impl Default for Config {
@@ -55,6 +76,7 @@ impl Default for Config {
             debounce_ms: 100,
             fullscreen: false,
             cache_tiles: 64,
+            tile_size: 256,
         }
     }
 }
