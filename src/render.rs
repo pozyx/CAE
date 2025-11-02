@@ -48,6 +48,19 @@ struct DragState {
     viewport_at_start: Viewport,
 }
 
+// Touch state for mobile gestures
+#[cfg(target_arch = "wasm32")]
+struct TouchState {
+    // Single touch for panning
+    single_touch: Option<(u64, f64, f64)>,  // (touch_id, x, y)
+    // Two touches for pinch zoom
+    touch1: Option<(u64, f64, f64)>,  // (touch_id, x, y)
+    touch2: Option<(u64, f64, f64)>,  // (touch_id, x, y)
+    initial_distance: Option<f32>,
+    initial_cell_size: Option<u32>,
+    viewport_at_pinch_start: Option<Viewport>,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -131,6 +144,8 @@ pub struct RenderApp {
     cursor_position: (f64, f64),
     #[allow(dead_code)]  // Only used on web target
     url_params_applied: bool,  // Track if URL parameters were applied (web only)
+    #[cfg(target_arch = "wasm32")]
+    touch_state: TouchState,  // Touch gesture state (web only)
 
     // Window and cell dimensions
     window_width: u32,
@@ -344,6 +359,15 @@ impl RenderApp {
             needs_recompute: true,
             cursor_position: (window_width as f64 / 2.0, window_height as f64 / 2.0),
             url_params_applied: false,
+            #[cfg(target_arch = "wasm32")]
+            touch_state: TouchState {
+                single_touch: None,
+                touch1: None,
+                touch2: None,
+                initial_distance: None,
+                initial_cell_size: None,
+                viewport_at_pinch_start: None,
+            },
 
             window_width,
             window_height,
@@ -898,6 +922,192 @@ impl Drop for RenderApp {
     }
 }
 
+impl RenderApp {
+    #[cfg(target_arch = "wasm32")]
+    fn handle_touch(&mut self, touch: winit::event::Touch) {
+        use winit::event::TouchPhase;
+
+        match touch.phase {
+            TouchPhase::Started => {
+                // First touch
+                if self.touch_state.touch1.is_none() {
+                    self.touch_state.touch1 = Some((touch.id, touch.location.x, touch.location.y));
+                    // Start single-touch pan
+                    self.touch_state.single_touch = Some((touch.id, touch.location.x, touch.location.y));
+                    self.drag_state = Some(DragState {
+                        active: true,
+                        start_x: touch.location.x,
+                        start_y: touch.location.y,
+                        viewport_at_start: self.viewport.clone(),
+                    });
+                }
+                // Second touch - start pinch zoom
+                else if self.touch_state.touch2.is_none() {
+                    self.touch_state.touch2 = Some((touch.id, touch.location.x, touch.location.y));
+                    // Cancel single touch pan
+                    self.touch_state.single_touch = None;
+                    self.drag_state = None;
+
+                    // Calculate initial distance between touches
+                    if let (Some((_, x1, y1)), Some((_, x2, y2))) = (self.touch_state.touch1, self.touch_state.touch2) {
+                        let dx = x2 - x1;
+                        let dy = y2 - y1;
+                        let distance = ((dx * dx + dy * dy) as f32).sqrt();
+                        self.touch_state.initial_distance = Some(distance);
+                        self.touch_state.initial_cell_size = Some(self.current_cell_size);
+                        self.touch_state.viewport_at_pinch_start = Some(self.viewport.clone());
+                    }
+                }
+            }
+            TouchPhase::Moved => {
+                // Single touch pan
+                if let Some((id, _, _)) = self.touch_state.single_touch {
+                    if touch.id == id {
+                        // Update pan - use existing drag logic
+                        if let Some(ref mut drag) = self.drag_state {
+                            let delta_x = touch.location.x - drag.start_x;
+                            let delta_y = touch.location.y - drag.start_y;
+
+                            let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+                            let visible_cells_y = self.window_height as f32 / self.current_cell_size as f32;
+
+                            let delta_cells_x = -(delta_x as f32 / self.window_width as f32) * visible_cells_x;
+                            let delta_cells_y = -(delta_y as f32 / self.window_height as f32) * visible_cells_y;
+
+                            self.viewport.offset_x = drag.viewport_at_start.offset_x + delta_cells_x;
+                            self.viewport.offset_y = drag.viewport_at_start.offset_y + delta_cells_y;
+                            self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+
+                            self.mark_viewport_changed();
+                            self.update_viewport_state_for_url();
+                        }
+                    }
+                }
+                // Pinch zoom
+                else if self.touch_state.touch1.is_some() && self.touch_state.touch2.is_some() {
+                    // Update touch positions
+                    if let Some((id1, ref mut x1, ref mut y1)) = self.touch_state.touch1 {
+                        if touch.id == id1 {
+                            *x1 = touch.location.x;
+                            *y1 = touch.location.y;
+                        }
+                    }
+                    if let Some((id2, ref mut x2, ref mut y2)) = self.touch_state.touch2 {
+                        if touch.id == id2 {
+                            *x2 = touch.location.x;
+                            *y2 = touch.location.y;
+                        }
+                    }
+
+                    // Calculate current distance and zoom
+                    if let (Some((_, x1, y1)), Some((_, x2, y2))) = (self.touch_state.touch1, self.touch_state.touch2) {
+                        let dx = x2 - x1;
+                        let dy = y2 - y1;
+                        let current_distance = ((dx * dx + dy * dy) as f32).sqrt();
+
+                        if let (Some(initial_distance), Some(initial_cell_size), Some(ref _viewport_start)) =
+                            (self.touch_state.initial_distance, self.touch_state.initial_cell_size, &self.touch_state.viewport_at_pinch_start) {
+
+                            // Calculate zoom factor
+                            let zoom_factor = current_distance / initial_distance;
+                            let new_cell_size = (initial_cell_size as f32 * zoom_factor).max(1.0).min(500.0) as u32;
+
+                            // Clamp to available zoom levels
+                            const ZOOM_MIN: f32 = 0.1;
+                            const ZOOM_MAX: f32 = 50.0;
+                            use crate::constants::DEFAULT_CELL_SIZE;
+                            let min_cell_size = (DEFAULT_CELL_SIZE as f32 * ZOOM_MIN).max(1.0) as u32;
+                            let max_cell_size = (DEFAULT_CELL_SIZE as f32 * ZOOM_MAX) as u32;
+                            let clamped_cell_size = new_cell_size.clamp(min_cell_size, max_cell_size);
+
+                            // Find nearest zoom level
+                            let zoom_levels: Vec<u32> = {
+                                let mut levels = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500];
+                                levels.retain(|&z| z >= min_cell_size && z <= max_cell_size);
+                                levels
+                            };
+
+                            let new_cell_size = zoom_levels.iter()
+                                .min_by_key(|&&level| ((level as i32) - (clamped_cell_size as i32)).abs())
+                                .copied()
+                                .unwrap_or(clamped_cell_size);
+
+                            if new_cell_size != self.current_cell_size {
+                                // Calculate pinch center
+                                let center_x = (x1 + x2) / 2.0;
+                                let center_y = (y1 + y2) / 2.0;
+
+                                // Calculate world position at pinch center with old cell size
+                                let old_visible_x = self.window_width as f32 / self.current_cell_size as f32;
+                                let old_visible_y = self.window_height as f32 / self.current_cell_size as f32;
+                                let cursor_frac_x = center_x as f32 / self.window_width as f32;
+                                let cursor_frac_y = center_y as f32 / self.window_height as f32;
+                                let world_x_at_cursor = self.viewport.offset_x + cursor_frac_x * old_visible_x;
+                                let world_y_at_cursor = self.viewport.offset_y + cursor_frac_y * old_visible_y;
+
+                                // Update cell size
+                                self.current_cell_size = new_cell_size;
+
+                                // Adjust viewport to keep world position at cursor fixed
+                                let new_visible_x = self.window_width as f32 / new_cell_size as f32;
+                                let new_visible_y = self.window_height as f32 / self.current_cell_size as f32;
+                                self.viewport.offset_x = world_x_at_cursor - cursor_frac_x * new_visible_x;
+                                self.viewport.offset_y = world_y_at_cursor - cursor_frac_y * new_visible_y;
+                                self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+
+                                self.mark_viewport_changed();
+                                self.update_viewport_state_for_url();
+                            }
+                        }
+                    }
+                }
+            }
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                // Remove the ended touch
+                if let Some((id1, _, _)) = self.touch_state.touch1 {
+                    if touch.id == id1 {
+                        self.touch_state.touch1 = self.touch_state.touch2.take();
+                        self.touch_state.touch2 = None;
+                    }
+                }
+                if let Some((id2, _, _)) = self.touch_state.touch2 {
+                    if touch.id == id2 {
+                        self.touch_state.touch2 = None;
+                    }
+                }
+
+                // Clear single touch
+                if let Some((id, _, _)) = self.touch_state.single_touch {
+                    if touch.id == id {
+                        self.touch_state.single_touch = None;
+                        self.drag_state = None;
+                    }
+                }
+
+                // Reset pinch state if no touches remain
+                if self.touch_state.touch1.is_none() {
+                    self.touch_state.initial_distance = None;
+                    self.touch_state.initial_cell_size = None;
+                    self.touch_state.viewport_at_pinch_start = None;
+                }
+
+                // If one touch remains after pinch, restart pan
+                if self.touch_state.touch1.is_some() && self.touch_state.touch2.is_none() {
+                    if let Some((id, x, y)) = self.touch_state.touch1 {
+                        self.touch_state.single_touch = Some((id, x, y));
+                        self.drag_state = Some(DragState {
+                            active: true,
+                            start_x: x,
+                            start_y: y,
+                            viewport_at_start: self.viewport.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl ApplicationHandler for RenderApp {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.is_none() {
@@ -1144,6 +1354,10 @@ impl ApplicationHandler for RenderApp {
                         }
                     }
                 }
+            }
+            #[cfg(target_arch = "wasm32")]
+            WindowEvent::Touch(touch) => {
+                self.handle_touch(touch);
             }
             _ => {}
         }
