@@ -71,20 +71,25 @@ impl Config {
             }
         }
 
-        // Window width: 500-8192 pixels (GPU texture size limit)
-        if self.width < 500 {
-            errors.push(format!("width must be at least 500 (got {})", self.width));
-        }
-        if self.width > 8192 {
-            errors.push(format!("width must be at most 8192 (got {})", self.width));
-        }
+        // Window width/height validation: only for desktop
+        // On web, canvas size is determined by the browser and can be any size (including mobile)
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Window width: 500-8192 pixels (GPU texture size limit)
+            if self.width < 500 {
+                errors.push(format!("width must be at least 500 (got {})", self.width));
+            }
+            if self.width > 8192 {
+                errors.push(format!("width must be at most 8192 (got {})", self.width));
+            }
 
-        // Window height: 500-8192 pixels (GPU texture size limit)
-        if self.height < 500 {
-            errors.push(format!("height must be at least 500 (got {})", self.height));
-        }
-        if self.height > 8192 {
-            errors.push(format!("height must be at most 8192 (got {})", self.height));
+            // Window height: 500-8192 pixels (GPU texture size limit)
+            if self.height < 500 {
+                errors.push(format!("height must be at least 500 (got {})", self.height));
+            }
+            if self.height > 8192 {
+                errors.push(format!("height must be at most 8192 (got {})", self.height));
+            }
         }
 
         // Cache tiles: 0-256
