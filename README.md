@@ -96,9 +96,9 @@ Specify a custom initial state:
 cargo run --release -- --rule 110 --initial-state "00100100"
 ```
 
-Set custom window size and cell size:
+Set custom window size:
 ```bash
-cargo run --release -- --rule 90 --width 1280 --height 1024 --cell-size 5
+cargo run --release -- --rule 90 --width 1280 --height 1024
 ```
 
 Start in fullscreen mode:
@@ -111,15 +111,13 @@ cargo run --release -- --rule 30 --fullscreen
 ```
 Options:
   -r, --rule <RULE>                    Wolfram CA rule number (0-255)
-  -s, --initial-state <INITIAL_STATE>  Initial state as binary string (e.g., "00100")
-  -w, --width <WIDTH>                  Window width in pixels [default: 800]
-      --height <HEIGHT>                Window height in pixels [default: 600]
-  -c, --cell-size <CELL_SIZE>          Cell size in pixels (NxN) [default: 10]
-      --zoom-min <ZOOM_MIN>            Minimum zoom level [default: 0.1]
-      --zoom-max <ZOOM_MAX>            Maximum zoom level [default: 10.0]
-      --debounce-ms <DEBOUNCE_MS>      Debounce time before recomputing [default: 100]
-      --cache-tiles <CACHE_TILES>      Maximum tiles to cache (0=disable) [default: 64]
-  -f, --fullscreen                     Start in fullscreen mode
+      --initial-state <INITIAL_STATE>  Initial state as binary string (e.g., "00100") [default: single center cell]
+      --width <WIDTH>                  Window width in pixels [default: 1280]
+      --height <HEIGHT>                Window height in pixels [default: 960]
+      --debounce-ms <DEBOUNCE_MS>          Debounce time before recomputing [default: 0]
+      --cache-tiles <CACHE_TILES>          Maximum tiles to cache (0=disable) [default: 64]
+      --cache-tile-size <CACHE_TILE_SIZE>  Cache tile size in cells (NxN) [default: 256]
+  -f, --fullscreen                         Start in fullscreen mode
   -h, --help                           Print help
 ```
 
@@ -132,26 +130,16 @@ The web version features an interactive control panel:
 - **Apply**: Apply settings and restart simulation
 - **Reset Viewport**: Return to initial view
 
-**Advanced Options:**
-- **Initial State**: Custom binary string for starting configuration
-- **Cell Size**: Adjust pixel size of cells
-- **Cache Tiles**: Configure GPU cache size (0 to disable)
-- **Zoom Limits**: Set minimum and maximum zoom levels
-
 **URL Parameters:**
 
 Share specific configurations and views using URL parameters:
 - `rule` - Wolfram rule number (e.g., `?rule=110`)
-- `state` - Initial state binary string (e.g., `&state=00100`)
-- `size` - Cell size in pixels (e.g., `&size=8`)
-- `cache` - Cache tiles (e.g., `&cache=128`)
-- `zmin` - Minimum zoom level (e.g., `&zmin=0.05`)
-- `zmax` - Maximum zoom level (e.g., `&zmax=20`)
+- `initial-state` - Initial state binary string (e.g., `&initial-state=00100`)
 - `vx` - Viewport X offset (auto-updated when panning)
 - `vy` - Viewport Y offset (auto-updated when panning)
 - `vz` - Viewport zoom level (auto-updated when zooming)
 
-Example: `https://pozyx.github.io/CAE/?rule=110&vx=-50.23&vy=100.00&vz=5`
+Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy=100.00&vz=5`
 
 ### Interactive Controls
 
@@ -409,8 +397,6 @@ wasm-pack build --target web --out-dir pkg
 - Try Chrome/Edge 113+ for best compatibility
 
 **Performance issues**
-- Try reducing cache size in the Advanced settings
-- Use smaller cell sizes for better frame rates
 - Check GPU usage in browser dev tools
 
 ### Desktop Version

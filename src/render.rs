@@ -16,7 +16,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{cache::TileCache, compute, Config};
+use crate::{cache::TileCache, compute, constants::DEFAULT_CELL_SIZE, Config};
 
 /// Viewport state in world space coordinates
 #[derive(Debug, Clone)]
@@ -129,6 +129,8 @@ pub struct RenderApp {
     last_viewport_change: Option<Instant>,
     needs_recompute: bool,
     cursor_position: (f64, f64),
+    #[allow(dead_code)]  // Only used on web target
+    url_params_applied: bool,  // Track if URL parameters were applied (web only)
 
     // Window and cell dimensions
     window_width: u32,
@@ -185,7 +187,7 @@ impl RenderApp {
         let window_height = config.height;
 
         println!("Initial window size: {}x{} pixels, cell size: {}px",
-            window_width, window_height, config.cell_size);
+            window_width, window_height, DEFAULT_CELL_SIZE);
 
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -285,11 +287,11 @@ impl RenderApp {
 
         // Create params buffer (will be updated after CA computation)
         let params = RenderParams {
-            visible_width: window_width / config.cell_size,
-            visible_height: window_height / config.cell_size,
-            simulated_width: window_width / config.cell_size,
+            visible_width: window_width / DEFAULT_CELL_SIZE,
+            visible_height: window_height / DEFAULT_CELL_SIZE,
+            simulated_width: window_width / DEFAULT_CELL_SIZE,
             padding_left: 0,
-            cell_size: config.cell_size,
+            cell_size: DEFAULT_CELL_SIZE,
             window_width,
             window_height,
             viewport_offset_x: 0,
@@ -305,7 +307,7 @@ impl RenderApp {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let cell_size = config.cell_size;
+        let cell_size = DEFAULT_CELL_SIZE;
 
         let cache_tiles = config.cache_tiles;
         let tile_size = config.tile_size;
@@ -328,10 +330,12 @@ impl RenderApp {
             bind_group_layout,
 
             viewport: {
-                let visible_cells_x = window_width as f32 / cell_size as f32;
                 let mut vp = Viewport::new();
-                // Center the origin (world position 0) horizontally
+                // Origin (0, 0) means: center horizontally, top vertically
+                // So offset_x should be negative half of visible width to center the origin
+                let visible_cells_x = window_width as f32 / cell_size as f32;
                 vp.offset_x = -visible_cells_x / 2.0;
+                vp.offset_y = 0.0;
                 vp
             },
             buffer_viewport: Viewport::new(),
@@ -339,6 +343,7 @@ impl RenderApp {
             last_viewport_change: None,
             needs_recompute: true,
             cursor_position: (window_width as f64 / 2.0, window_height as f64 / 2.0),
+            url_params_applied: false,
 
             window_width,
             window_height,
@@ -365,16 +370,29 @@ impl RenderApp {
         {
             use std::sync::atomic::Ordering;
             if crate::web::INITIAL_VIEWPORT_SET.load(Ordering::SeqCst) {
-                let initial_x = *crate::web::INITIAL_OFFSET_X.lock().unwrap();
+                let center_x = *crate::web::INITIAL_OFFSET_X.lock().unwrap();
                 let initial_y = *crate::web::INITIAL_OFFSET_Y.lock().unwrap();
                 let initial_cell_size = crate::web::INITIAL_CELL_SIZE.load(Ordering::SeqCst);
 
-                println!("Applying initial viewport from URL: offset=({}, {}), cell_size={}",
-                    initial_x, initial_y, initial_cell_size);
-
-                self.viewport.offset_x = initial_x;
+                // Convert from "center position" (URL vx) to internal offset
+                // offset_x = world position at LEFT edge of screen
+                // center_x = world position at CENTER of screen
+                // So: offset_x = center_x - (visible_width / 2)
+                let visible_cells_x = self.window_width as f32 / initial_cell_size as f32;
+                self.viewport.offset_x = center_x - (visible_cells_x / 2.0);
                 self.viewport.offset_y = initial_y;
                 self.current_cell_size = initial_cell_size;
+
+                // Update viewport state globals to reflect the URL parameters
+                // This ensures the URL updater gets the correct values
+                let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+                let url_center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
+                *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = url_center_x;
+                *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
+                crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
+
+                // Mark that URL parameters were applied
+                self.url_params_applied = true;
 
                 // Clear the flag so we don't reapply on subsequent inits
                 crate::web::INITIAL_VIEWPORT_SET.store(false, Ordering::SeqCst);
@@ -384,10 +402,21 @@ impl RenderApp {
         let mut window_attributes = Window::default_attributes()
             .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.config.rule));
 
-        // On desktop, set the window size. On web, don't - let it use the canvas's existing size
+        // On desktop, set the window size and constraints. On web, don't - let it use the canvas's existing size
         #[cfg(not(target_arch = "wasm32"))]
         {
-            window_attributes = window_attributes.with_inner_size(winit::dpi::PhysicalSize::new(self.window_width, self.window_height));
+            use winit::dpi::PhysicalSize;
+
+            // Set initial size
+            window_attributes = window_attributes.with_inner_size(PhysicalSize::new(self.window_width, self.window_height));
+
+            // Set min/max size constraints based on validation limits (500-8192)
+            // This allows resizing but keeps it within valid bounds
+            let min_size = PhysicalSize::new(500u32, 500u32);
+            let max_size = PhysicalSize::new(8192u32, 8192u32);
+            window_attributes = window_attributes
+                .with_min_inner_size(min_size)
+                .with_max_inner_size(max_size);
         }
 
         // Platform-specific setup
@@ -627,14 +656,26 @@ impl RenderApp {
         self.last_viewport_change = Some(Instant::now());
         self.needs_recompute = true;
 
-        // Update viewport state for JavaScript (web only)
-        #[cfg(target_arch = "wasm32")]
-        {
-            use std::sync::atomic::Ordering;
-            *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = self.viewport.offset_x;
-            *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
-            crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
-        }
+        // Note: We don't update viewport state globals here anymore
+        // They are only updated when user explicitly pans/zooms via update_viewport_state_for_url()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn update_viewport_state_for_url(&mut self) {
+        // Update viewport state for JavaScript URL updates
+        // This should only be called when user explicitly pans/zooms
+        use std::sync::atomic::Ordering;
+
+        // Convert internal offset to center position for URL
+        // offset_x = world position at LEFT edge
+        // center_x (for URL) = world position at CENTER
+        // So: center_x = offset_x + (visible_width / 2)
+        let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+        let center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
+
+        *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = center_x;
+        *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
+        crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
     }
 
     fn update_render_params(&mut self) {
@@ -683,25 +724,35 @@ impl RenderApp {
     }
 
     pub fn reset_viewport(&mut self) {
-        // Reset viewport to initial centered state
+        // Reset viewport to initial state (origin at center horizontally, top vertically)
         println!("Resetting viewport to initial state...");
-        self.current_cell_size = self.config.cell_size;
+        self.current_cell_size = DEFAULT_CELL_SIZE;
         self.viewport.zoom = 1.0;
+
+        // Origin (0, 0) means: center horizontally, top vertically
         let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
         self.viewport.offset_x = -visible_cells_x / 2.0;
         self.viewport.offset_y = 0.0;
+
         self.needs_recompute = true;
         self.last_viewport_change = Some(Instant::now());
+
+        // Update viewport state for JavaScript URL updates (web only)
+        #[cfg(target_arch = "wasm32")]
+        self.update_viewport_state_for_url();
     }
 
     fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
-        // Calculate zoom limits based on config
+        // Hardcoded zoom limits
         // Zoom > 1.0 means zoomed IN (cells appear bigger)
         // Zoom < 1.0 means zoomed OUT (cells appear smaller)
         // zoom_factor = current_cell_size / base_cell_size
-        let base_cell_size = self.config.cell_size;
-        let min_cell_size = (base_cell_size as f32 * self.config.zoom_min).max(1.0) as u32;
-        let max_cell_size = (base_cell_size as f32 * self.config.zoom_max) as u32;
+        const ZOOM_MIN: f32 = 0.1;  // Allows zooming out to 1 pixel per cell
+        const ZOOM_MAX: f32 = 50.0; // Allows zooming in 5x more than previous max
+
+        let base_cell_size = DEFAULT_CELL_SIZE;
+        let min_cell_size = (base_cell_size as f32 * ZOOM_MIN).max(1.0) as u32;
+        let max_cell_size = (base_cell_size as f32 * ZOOM_MAX) as u32;
 
         // Generate zoom levels dynamically based on limits
         let zoom_levels: Vec<u32> = {
@@ -763,6 +814,10 @@ impl RenderApp {
             self.viewport.offset_y = self.viewport.offset_y.max(0.0);
 
             self.mark_viewport_changed();
+
+            // Update URL state for web (only after user interaction)
+            #[cfg(target_arch = "wasm32")]
+            self.update_viewport_state_for_url();
         }
     }
 
@@ -862,6 +917,12 @@ impl ApplicationHandler for RenderApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
+                // Skip rendering when window is minimized (width or height = 0)
+                // This prevents "Render error: Outdated" spam in logs
+                if self.window_width == 0 || self.window_height == 0 {
+                    return;
+                }
+
                 // Check if viewport reset was requested from web (via JavaScript)
                 #[cfg(target_arch = "wasm32")]
                 {
@@ -892,6 +953,44 @@ impl ApplicationHandler for RenderApp {
                 }
             }
             WindowEvent::Resized(physical_size) => {
+                // On web, initial resize event may occur after window creation (e.g., high-DPI displays)
+                // Recalculate viewport offset to maintain the correct center position
+                #[cfg(target_arch = "wasm32")]
+                {
+                    if self.last_viewport_change.is_none() {
+                        let old_width = self.window_width;
+                        let new_width = physical_size.width;
+
+                        if old_width != new_width {
+                            if !self.url_params_applied {
+                                // First resize on web with no URL params - recalculate offset to maintain centered origin
+                                let visible_cells_x = new_width as f32 / self.current_cell_size as f32;
+                                self.viewport.offset_x = -visible_cells_x / 2.0;
+                            } else {
+                                // First resize on web WITH URL params - recalculate offset to maintain center position from URL
+                                // Calculate current center position
+                                let old_visible_x = old_width as f32 / self.current_cell_size as f32;
+                                let center_x = self.viewport.offset_x + (old_visible_x / 2.0);
+
+                                // Recalculate offset for new width to maintain same center
+                                let new_visible_x = new_width as f32 / self.current_cell_size as f32;
+                                self.viewport.offset_x = center_x - (new_visible_x / 2.0);
+                            }
+                        }
+                    }
+                }
+
+                // Update window dimensions immediately (even if minimized)
+                // This ensures RedrawRequested knows not to render
+                self.window_width = physical_size.width;
+                self.window_height = physical_size.height;
+
+                // Skip surface reconfiguration when window is minimized (width or height = 0)
+                // This prevents wgpu errors about zero-sized surfaces
+                if physical_size.width == 0 || physical_size.height == 0 {
+                    return;
+                }
+
                 // Update surface configuration for new window size
                 if let Some(config) = &mut self.surface_config {
                     config.width = physical_size.width;
@@ -936,12 +1035,6 @@ impl ApplicationHandler for RenderApp {
                     }
                 }
 
-                // Update window dimensions immediately
-                // The shader will handle rendering the old buffer at the new size
-                // without stretching (showing black for newly exposed areas)
-                self.window_width = physical_size.width;
-                self.window_height = physical_size.height;
-
                 // Mark for recompute - after debounce we'll compute for new viewport
                 self.mark_viewport_changed();
             }
@@ -980,6 +1073,10 @@ impl ApplicationHandler for RenderApp {
                         self.viewport.offset_y = self.viewport.offset_y.max(0.0);
 
                         self.mark_viewport_changed();
+
+                        // Update URL state for web (only after user interaction)
+                        #[cfg(target_arch = "wasm32")]
+                        self.update_viewport_state_for_url();
                     }
                 }
             }

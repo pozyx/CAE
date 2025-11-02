@@ -73,12 +73,7 @@ pub async fn start() -> Result<(), JsValue> {
         config.rule,
         config.width,
         config.height,
-        config.cell_size,
-        config.cache_tiles,
-        config.tile_size,
         config.initial_state.clone(),
-        config.zoom_min,
-        config.zoom_max,
     ).await
 }
 
@@ -89,12 +84,7 @@ pub async fn start_with_params(
     rule: u8,
     width: u32,
     height: u32,
-    cell_size: u32,
-    cache_tiles: usize,
-    tile_size: u32,
     initial_state: Option<String>,
-    zoom_min: f32,
-    zoom_max: f32,
 ) -> Result<(), JsValue> {
     // Set up panic hook and logger only once (ignore errors if already initialized)
     use std::sync::Once;
@@ -106,24 +96,33 @@ pub async fn start_with_params(
         let _ = console_log::init_with_level(log::Level::Info);
     });
 
-    log::info!("Starting CAE with rule {}, {}x{}, cell size {}", rule, width, height, cell_size);
+    log::info!("Starting CAE with rule {}, {}x{}", rule, width, height);
 
-    let mut config = Config {
+    // Initialize viewport state globals to 0 to prevent stale values
+    use std::sync::atomic::Ordering;
+    *VIEWPORT_OFFSET_X.lock().unwrap() = 0.0;
+    *VIEWPORT_OFFSET_Y.lock().unwrap() = 0.0;
+    VIEWPORT_CELL_SIZE.store(10, Ordering::SeqCst);
+
+    use crate::constants::{DEFAULT_CACHE_TILES, DEFAULT_TILE_SIZE};
+    let config = Config {
         rule,
         initial_state,
         width,
         height,
-        cell_size,
-        zoom_min,
-        zoom_max,
-        debounce_ms: 100,
+        debounce_ms: 0,
         fullscreen: false,
-        cache_tiles,
-        tile_size,
+        cache_tiles: DEFAULT_CACHE_TILES,
+        tile_size: DEFAULT_TILE_SIZE,
     };
 
-    // Validate tile_size to prevent 0 or invalid values
-    config.validate_tile_size();
+    // Validate configuration - this should never fail if JavaScript validation is correct,
+    // but provides a safety layer in case JavaScript is bypassed
+    if let Err(errors) = config.validate() {
+        let error_msg = format!("Configuration validation failed:\n• {}", errors.join("\n• "));
+        log::error!("{}", error_msg);
+        return Err(JsValue::from_str(&error_msg));
+    }
 
     let event_loop = EventLoop::new()
         .map_err(|e| JsValue::from_str(&format!("Failed to create event loop: {:?}", e)))?;

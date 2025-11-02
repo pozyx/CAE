@@ -7,76 +7,102 @@ use caelib::Config;
 #[command(name = "CAE")]
 #[command(about = "1D Cellular Automaton Engine with GPU acceleration", long_about = None)]
 struct CliArgs {
-    /// Wolfram CA rule number (0-255)
+    /// Wolfram CA rule number (0-255) [required]
     #[arg(short, long)]
     rule: u8,
 
-    /// Initial state as binary string (e.g., "00100" for center cell)
-    #[arg(short = 's', long)]
+    /// Initial state as binary string (e.g., "00100" for center cell) [default: single center cell]
+    #[arg(long)]
     initial_state: Option<String>,
 
-    /// Window width in pixels (default: 1280)
-    #[arg(short, long, default_value = "1280")]
+    /// Window width in pixels
+    #[arg(long, default_value = "1280")]
     width: u32,
 
-    /// Window height in pixels (default: 960)
+    /// Window height in pixels
     #[arg(long, default_value = "960")]
     height: u32,
-
-    /// Cell size in pixels (default: 10, each cell is NxN pixels)
-    #[arg(short = 'c', long, default_value = "10")]
-    cell_size: u32,
-
-    /// Minimum zoom level (default: 0.1)
-    #[arg(long, default_value = "0.1")]
-    zoom_min: f32,
-
-    /// Maximum zoom level (default: 10.0)
-    #[arg(long, default_value = "10.0")]
-    zoom_max: f32,
-
-    /// Debounce time in milliseconds before recomputing after viewport change (default: 100)
-    #[arg(long, default_value = "100")]
-    debounce_ms: u64,
 
     /// Start in fullscreen mode
     #[arg(short = 'f', long, default_value = "false")]
     fullscreen: bool,
 
-    /// Maximum number of tiles to cache (0 to disable caching, default: 64)
+    /// Debounce time in milliseconds before recomputing after viewport change
+    #[arg(long, default_value = "0")]
+    debounce_ms: u64,
+
+    /// Maximum number of tiles to cache (0 to disable caching)
     #[arg(long, default_value = "64")]
     cache_tiles: usize,
 
-    /// Tile size for caching (tiles are NxN cells, default: 256)
+    /// Cache tile size (tiles are NxN cells)
     #[arg(long, default_value = "256")]
-    tile_size: u32,
+    cache_tile_size: u32,
 }
 
 impl From<CliArgs> for Config {
     fn from(cli: CliArgs) -> Self {
-        let mut config = Config {
+        Config {
             rule: cli.rule,
             initial_state: cli.initial_state,
             width: cli.width,
             height: cli.height,
-            cell_size: cli.cell_size,
-            zoom_min: cli.zoom_min,
-            zoom_max: cli.zoom_max,
             debounce_ms: cli.debounce_ms,
             fullscreen: cli.fullscreen,
             cache_tiles: cli.cache_tiles,
-            tile_size: cli.tile_size,
-        };
-        // Validate and clamp tile_size
-        config.validate_tile_size();
-        config
+            tile_size: cli.cache_tile_size,
+        }
     }
 }
 
 fn main() {
     env_logger::init();
-    let cli_args = CliArgs::parse();
+
+    // Parse CLI arguments with custom error handling
+    let cli_args = match CliArgs::try_parse() {
+        Ok(args) => args,
+        Err(err) => {
+            // Check if this is a help or version request (should exit with success)
+            use clap::error::ErrorKind;
+            match err.kind() {
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
+                    // Print help/version to stdout and exit successfully
+                    print!("{}", err);
+                    std::process::exit(0);
+                }
+                _ => {
+                    // Actual error - format it to match our validation error format
+                    let err_str = err.to_string();
+                    let err_str = err_str.trim_end();
+
+                    // Remove clap's "For more information" line if present
+                    let err_lines: Vec<&str> = err_str.lines().collect();
+                    let main_error = if err_lines.len() > 1 && err_lines.last().unwrap().contains("For more information") {
+                        err_lines[..err_lines.len() - 2].join("\n") // Remove blank line and help line
+                    } else {
+                        err_str.to_string()
+                    };
+
+                    eprintln!("Error: {}", main_error);
+                    eprintln!();
+                    eprintln!("For more information, try '--help'.");
+                    std::process::exit(1);
+                }
+            }
+        }
+    };
+
     let config: Config = cli_args.into();
+
+    // Validate configuration before running
+    if let Err(errors) = config.validate() {
+        for error in &errors {
+            eprintln!("Error: {}", error);
+        }
+        eprintln!();
+        eprintln!("For more information, try '--help'.");
+        std::process::exit(1);
+    }
 
     let initial_display = config.initial_state.as_ref()
         .map(|s| if s.len() > 30 { format!("{}...", &s[..27]) } else { s.clone() })

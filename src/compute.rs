@@ -310,7 +310,17 @@ pub fn run_ca_with_cache(
     for tile_y in tile_y_start..=tile_y_end {
         for tile_x in tile_x_start..=tile_x_end {
             let tile_key = TileKey::new(rule, &initial_state, tile_x, tile_y);
-            let tile = cache.get(&tile_key).expect("Tile should be in cache");
+
+            // Get tile from cache, or recompute if evicted (can happen with very small cache)
+            let tile = if let Some(t) = cache.get(&tile_key) {
+                t
+            } else {
+                // Tile was evicted due to insufficient cache size - recompute it
+                log_info!("Tile ({}, {}) was evicted, recomputing...", tile_x, tile_y);
+                let new_tile = compute_tile(device, queue, rule, tile_x, tile_y, tile_size as u32, &initial_state);
+                cache.insert(tile_key.clone(), new_tile);
+                cache.get(&tile_key).expect("Just inserted tile should be in cache")
+            };
 
             // Calculate overlap between tile and viewport
             let tile_world_x_start = tile_x * tile_size;
