@@ -48,8 +48,7 @@ struct DragState {
     viewport_at_start: Viewport,
 }
 
-// Touch state for mobile gestures
-#[cfg(target_arch = "wasm32")]
+// Touch state for touch gestures (mobile and desktop touchscreens)
 struct TouchState {
     // Single touch for panning
     single_touch: Option<(u64, f64, f64)>,  // (touch_id, x, y)
@@ -144,8 +143,7 @@ pub struct RenderApp {
     cursor_position: (f64, f64),
     #[allow(dead_code)]  // Only used on web target
     url_params_applied: bool,  // Track if URL parameters were applied (web only)
-    #[cfg(target_arch = "wasm32")]
-    touch_state: TouchState,  // Touch gesture state (web only)
+    touch_state: TouchState,  // Touch gesture state (mobile and desktop touchscreens)
 
     // Window and cell dimensions
     window_width: u32,
@@ -359,7 +357,6 @@ impl RenderApp {
             needs_recompute: true,
             cursor_position: (window_width as f64 / 2.0, window_height as f64 / 2.0),
             url_params_applied: false,
-            #[cfg(target_arch = "wasm32")]
             touch_state: TouchState {
                 single_touch: None,
                 touch1: None,
@@ -923,7 +920,6 @@ impl Drop for RenderApp {
 }
 
 impl RenderApp {
-    #[cfg(target_arch = "wasm32")]
     fn handle_touch(&mut self, touch: winit::event::Touch) {
         use winit::event::TouchPhase;
 
@@ -979,6 +975,7 @@ impl RenderApp {
                             self.viewport.offset_y = self.viewport.offset_y.max(0.0);
 
                             self.mark_viewport_changed();
+                            #[cfg(target_arch = "wasm32")]
                             self.update_viewport_state_for_url();
                         }
                     }
@@ -1056,6 +1053,7 @@ impl RenderApp {
                                 self.viewport.offset_y = self.viewport.offset_y.max(0.0);
 
                                 self.mark_viewport_changed();
+                                #[cfg(target_arch = "wasm32")]
                                 self.update_viewport_state_for_url();
                             }
                         }
@@ -1355,7 +1353,6 @@ impl ApplicationHandler for RenderApp {
                     }
                 }
             }
-            #[cfg(target_arch = "wasm32")]
             WindowEvent::Touch(touch) => {
                 self.handle_touch(touch);
             }
