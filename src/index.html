@@ -204,13 +204,13 @@
         button:disabled {
             opacity: 0.3;
             cursor: not-allowed;
-            border-color: #333;
-            color: #666;
+            border-color: #333 !important;
+            color: #666 !important;
         }
 
         button:disabled:hover {
-            background: #000;
-            color: #666;
+            background: #000 !important;
+            color: #666 !important;
         }
 
         button.secondary {
@@ -333,7 +333,7 @@
         </div>
 
         <button id="apply-btn" onclick="startCAE()" disabled>Apply</button>
-        <button class="secondary" onclick="resetView()">Reset Viewport</button>
+        <button id="reset-btn" class="secondary" onclick="resetView()">Reset Viewport</button>
 
         <div id="status">&nbsp;</div>
 
@@ -562,6 +562,14 @@
             }
         };
 
+        // Check if viewport is at default state
+        function isViewportAtDefault(x, y, cellSize) {
+            // Default viewport: y=0, cellSize=10
+            // x is centered which depends on window width, so we check if it's close to 0
+            // (when at default, x should be negative half of visible cells)
+            return Math.abs(y) < 0.01 && cellSize === 10;
+        }
+
         // Update URL with current viewport position (debounced)
         let lastViewportUpdate = 0;
         let lastViewportState = null;  // Start as null to skip first update
@@ -583,6 +591,11 @@
                     // Initialize lastViewportState on first call (don't update URL yet)
                     if (lastViewportState === null) {
                         lastViewportState = { x, y, cellSize };
+                        // Update reset button state on initial load
+                        const resetBtn = document.getElementById('reset-btn');
+                        if (resetBtn) {
+                            resetBtn.disabled = isViewportAtDefault(x, y, cellSize);
+                        }
                         requestAnimationFrame(updateViewportUrl);
                         return;
                     }
@@ -594,6 +607,12 @@
 
                         lastViewportState = { x, y, cellSize };
                         lastViewportUpdate = now;
+
+                        // Update reset button state
+                        const resetBtn = document.getElementById('reset-btn');
+                        if (resetBtn) {
+                            resetBtn.disabled = isViewportAtDefault(x, y, cellSize);
+                        }
 
                         // Get current URL parameters
                         const urlParams = new URLSearchParams(window.location.search);
