@@ -149,54 +149,63 @@ fn compute_tile(
         cache: None,
     });
 
-    // Create command encoder and dispatch all iterations
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Tile Compute Encoder"),
-    });
-
+    // Batch iterations to reduce memory accumulation
+    // Process in batches of 32 iterations, submit and cleanup after each batch
     let workgroups = (simulated_width + 255) / 256;
+    let batch_size = 32u32;
 
-    for iter in 0..total_generations {
-        let params = Params {
-            width: simulated_width,
-            height: buffer_height,
-            rule: rule as u32,
-            current_row: iter,
-        };
+    for batch_start in (0..total_generations).step_by(batch_size as usize) {
+        let batch_end = (batch_start + batch_size).min(total_generations);
 
-        let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Params Buffer"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Tile Compute Encoder"),
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CA Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ca_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        for iter in batch_start..batch_end {
+            let params = Params {
+                width: simulated_width,
+                height: buffer_height,
+                rule: rule as u32,
+                current_row: iter,
+            };
 
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Tile Compute Pass"),
-                timestamp_writes: None,
+            let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Params Buffer"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
             });
-            compute_pass.set_pipeline(&pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-    }
 
-    queue.submit(Some(encoder.finish()));
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("CA Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: ca_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Tile Compute Pass"),
+                    timestamp_writes: None,
+                });
+                compute_pass.set_pipeline(&pipeline);
+                compute_pass.set_bind_group(0, &bind_group, &[]);
+                compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            }
+        }
+
+        queue.submit(Some(encoder.finish()));
+
+        // Force GPU to process pending work and cleanup buffers
+        let _ = device.poll(wgpu::PollType::Wait);
+    }
 
     // Extract only the tile's generation range (tile_y * 256 to (tile_y+1) * 256)
     let tile_gen_offset = (tile_y * tile_height as i32).max(0) as u32;
@@ -223,6 +232,9 @@ fn compute_tile(
     );
 
     queue.submit(Some(copy_encoder.finish()));
+
+    // Force GPU to process copy work and cleanup temporary buffers
+    let _ = device.poll(wgpu::PollType::Wait);
 
     Tile {
         buffer: tile_buffer,
@@ -393,6 +405,9 @@ pub fn run_ca_with_cache(
 
     queue.submit(Some(encoder.finish()));
 
+    // Force GPU to process assembly work and cleanup
+    let _ = device.poll(wgpu::PollType::Wait);
+
     CaResult {
         buffer: output_buffer,
         simulated_width,
@@ -514,57 +529,65 @@ pub fn run_ca(
         cache: None,
     });
 
-    // Create a single command encoder for ALL iterations
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("CA Compute Encoder"),
-    });
-
-    // Dispatch all iterations with ping-pong buffers
+    // Batch iterations to reduce memory accumulation
+    // Process in batches of 32 iterations, submit and cleanup after each batch
     let workgroups = (simulated_width + 255) / 256;
+    let batch_size = 32u32;
 
-    for iter in 0..total_iterations {
-        let params = Params {
-            width: simulated_width,
-            height: buffer_height,
-            rule: rule as u32,
-            current_row: iter,
-        };
+    for batch_start in (0..total_iterations).step_by(batch_size as usize) {
+        let batch_end = (batch_start + batch_size).min(total_iterations);
 
-        let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Params Buffer"),
-            contents: bytemuck::cast_slice(&[params]),
-            usage: wgpu::BufferUsages::UNIFORM,
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("CA Compute Encoder"),
         });
 
-        // Use single buffer (reads from current_row, writes to current_row + 1)
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("CA Bind Group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ca_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: params_buffer.as_entire_binding(),
-                },
-            ],
-        });
+        for iter in batch_start..batch_end {
+            let params = Params {
+                width: simulated_width,
+                height: buffer_height,
+                rule: rule as u32,
+                current_row: iter,
+            };
 
-        {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("CA Compute Pass"),
-                timestamp_writes: None,
+            let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Params Buffer"),
+                contents: bytemuck::cast_slice(&[params]),
+                usage: wgpu::BufferUsages::UNIFORM,
             });
-            compute_pass.set_pipeline(&pipeline);
-            compute_pass.set_bind_group(0, &bind_group, &[]);
-            compute_pass.dispatch_workgroups(workgroups, 1, 1);
-        }
-    }
 
-    // Submit compute work
-    queue.submit(Some(encoder.finish()));
+            // Use single buffer (reads from current_row, writes to current_row + 1)
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("CA Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: ca_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: params_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("CA Compute Pass"),
+                    timestamp_writes: None,
+                });
+                compute_pass.set_pipeline(&pipeline);
+                compute_pass.set_bind_group(0, &bind_group, &[]);
+                compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            }
+        }
+
+        // Submit compute work for this batch
+        queue.submit(Some(encoder.finish()));
+
+        // Force GPU to process pending work and cleanup buffers
+        let _ = device.poll(wgpu::PollType::Wait);
+    }
 
     // Create output buffer containing only the visible range (start_generation to start_generation + iterations)
     let visible_height = iterations + 1;
@@ -592,6 +615,9 @@ pub fn run_ca(
     );
 
     queue.submit(Some(copy_encoder.finish()));
+
+    // Force GPU to process copy work and cleanup
+    let _ = device.poll(wgpu::PollType::Wait);
 
     CaResult {
         buffer: output_buffer,

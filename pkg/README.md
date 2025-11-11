@@ -16,8 +16,8 @@ The application features an interactive viewport with pan and zoom controls, ena
 - **Zero-Copy Architecture**: Data remains on the GPU throughout the computation pipeline - no CPU readback between iterations
 - **Tile-Based Caching**: Intelligent LRU cache system that stores 256×256 cell tiles to avoid redundant computation during navigation
 - **Interactive Viewport**:
-  - Pan by dragging with the mouse
-  - Zoom in/out using the scroll wheel
+  - Pan by dragging with the mouse or touch
+  - Zoom in/out using the scroll wheel or touch
   - Configurable zoom limits
   - Reset to initial view with '0' key
 - **Shareable URLs**: Share exact views with URL parameters including viewport position and zoom level
@@ -143,8 +143,8 @@ Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy
 
 ### Interactive Controls
 
-- **Drag mouse**: Pan the viewport
-- **Scroll wheel**: Zoom in/out
+- **Drag mouse / one finger**: Pan the viewport
+- **Scroll mouse wheel / pinch**: Zoom in/out
 - **0 key**: Reset viewport to initial position (centered, generation 0, zoom 1.0)
 - **F11**: Toggle fullscreen mode
 - **ESC**: Exit fullscreen or close application (desktop)
