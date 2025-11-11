@@ -120,8 +120,8 @@ fn main() {
     println!("║ Initial State: {:<31} ║", initial_display);
     println!("╠════════════════════════════════════════════════╣");
     println!("║ Controls:                                      ║");
-    println!("║  • Drag mouse: Pan viewport                    ║");
-    println!("║  • Scroll wheel: Zoom in/out                   ║");
+    println!("║  • Drag mouse / one finger: Pan viewport       ║");
+    println!("║  • Scroll mouse wheel / pinch: Zoom in/out     ║");
     println!("║  • 0: Reset viewport to initial position       ║");
     println!("║  • F11: Toggle fullscreen                      ║");
     println!("║  • ESC: Exit                                   ║");
