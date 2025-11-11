@@ -358,6 +358,16 @@
         }
         window.toggleControls = toggleControls;
 
+        // Expand controls panel (used for showing errors)
+        function expandControls() {
+            const controls = document.getElementById('controls');
+            const btn = document.getElementById('toggle-btn');
+            controls.classList.remove('collapsed');
+            btn.textContent = '✕';
+            localStorage.setItem('cae-controls-collapsed', false);
+        }
+        window.expandControls = expandControls;
+
         // Restore controls state from localStorage on page load
         const savedState = localStorage.getItem('cae-controls-collapsed');
         if (savedState !== null) {
@@ -461,6 +471,7 @@
             if (validationErrors.length > 0) {
                 statusEl.className = 'error';
                 statusEl.innerHTML = '<strong>Validation Failed:</strong><br>• ' + validationErrors.join('<br>• ');
+                window.expandControls(); // Expand to show error
                 return;
             }
 
@@ -473,6 +484,7 @@
                     '• Safari 18+ (Technical Preview)<br>' +
                     '• Firefox 121+ (enable in about:config)<br><br>' +
                     'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank" style="color: #fff;">caniuse.com/webgpu</a>';
+                window.expandControls(); // Expand to show error
                 return;
             }
 
@@ -505,6 +517,7 @@
                     '• Safari 18+ (Technical Preview)<br>' +
                     '• Firefox 121+ (enable in about:config)<br><br>' +
                     'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank">caniuse.com/webgpu</a>';
+                window.expandControls(); // Expand to show error
                 return;
             }
 
@@ -567,6 +580,7 @@
                 console.error('Failed to start CAE:', error);
                 statusEl.className = 'error';
                 statusEl.textContent = `Error: ${error.message || String(error)}`;
+                window.expandControls(); // Expand to show error
             }
         }
 
