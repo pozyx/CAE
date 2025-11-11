@@ -353,8 +353,8 @@
             const isCollapsed = controls.classList.contains('collapsed');
             btn.textContent = isCollapsed ? '☰' : '✕';
 
-            // Save state to localStorage
-            localStorage.setItem('cae-controls-collapsed', isCollapsed);
+            // Save state to sessionStorage (per-tab, not shared across tabs)
+            sessionStorage.setItem('cae-controls-collapsed', isCollapsed);
         }
         window.toggleControls = toggleControls;
 
@@ -364,12 +364,12 @@
             const btn = document.getElementById('toggle-btn');
             controls.classList.remove('collapsed');
             btn.textContent = '✕';
-            localStorage.setItem('cae-controls-collapsed', false);
+            sessionStorage.setItem('cae-controls-collapsed', false);
         }
         window.expandControls = expandControls;
 
-        // Restore controls state from localStorage on page load
-        const savedState = localStorage.getItem('cae-controls-collapsed');
+        // Restore controls state from sessionStorage on page load
+        const savedState = sessionStorage.getItem('cae-controls-collapsed');
         if (savedState !== null) {
             const controls = document.getElementById('controls');
             const btn = document.getElementById('toggle-btn');
