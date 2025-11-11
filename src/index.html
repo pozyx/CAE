@@ -38,22 +38,20 @@
             z-index: 1000;
             max-height: calc(100vh - 24px);
             overflow: visible;
-            transition: width 0.3s ease, padding 0.3s ease;
         }
 
         #controls-content {
             max-height: calc(100vh - 80px);
             overflow-y: auto;
-        }
-
-        #controls.collapsed {
-            width: auto;
-            padding: 12px;
-            overflow: visible;
+            transition: opacity 0.3s ease, max-height 0.3s ease;
+            opacity: 1;
         }
 
         #controls.collapsed #controls-content {
-            display: none;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
         }
 
         #toggle-btn {
@@ -307,7 +305,7 @@
 <body>
     <canvas id="cae-canvas"></canvas>
 
-    <div id="controls">
+    <div id="controls" class="collapsed">
         <button id="toggle-btn" onclick="toggleControls()">☰</button>
         <div id="controls-title">
             <h2>CAE <span id="rule-display"></span></h2>
@@ -352,9 +350,29 @@
             const controls = document.getElementById('controls');
             const btn = document.getElementById('toggle-btn');
             controls.classList.toggle('collapsed');
-            btn.textContent = controls.classList.contains('collapsed') ? '☰' : '✕';
+            const isCollapsed = controls.classList.contains('collapsed');
+            btn.textContent = isCollapsed ? '☰' : '✕';
+
+            // Save state to localStorage
+            localStorage.setItem('cae-controls-collapsed', isCollapsed);
         }
         window.toggleControls = toggleControls;
+
+        // Restore controls state from localStorage on page load
+        const savedState = localStorage.getItem('cae-controls-collapsed');
+        if (savedState !== null) {
+            const controls = document.getElementById('controls');
+            const btn = document.getElementById('toggle-btn');
+            const shouldBeCollapsed = savedState === 'true';
+
+            if (shouldBeCollapsed) {
+                controls.classList.add('collapsed');
+                btn.textContent = '☰';
+            } else {
+                controls.classList.remove('collapsed');
+                btn.textContent = '✕';
+            }
+        }
 
         // Update rule display when rule changes
         function updateRuleDisplay() {
