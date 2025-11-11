@@ -440,7 +440,7 @@
         // If not present, will be calculated by Rust based on window size
         const viewportX = urlParams.has('vx') ? parseFloat(urlParams.get('vx')) : null;
         const viewportY = urlParams.has('vy') ? parseFloat(urlParams.get('vy')) : null;
-        const viewportCellSize = urlParams.has('vz') ? parseInt(urlParams.get('vz')) : null;
+        const viewportCellSize = urlParams.has('vzoom') ? parseInt(urlParams.get('vzoom')) : null;
 
         // Validate all configuration parameters
         function validateConfig() {
@@ -596,10 +596,9 @@
 
         // Check if viewport is at default state
         function isViewportAtDefault(x, y, cellSize) {
-            // Default viewport: y=0, cellSize=10
-            // x is centered which depends on window width, so we check if it's close to 0
-            // (when at default, x should be negative half of visible cells)
-            return Math.abs(y) < 0.01 && cellSize === 10;
+            // Default viewport: (0, 0) in world space with cellSize=10
+            // All three parameters must be at default values
+            return Math.abs(x) < 0.01 && Math.abs(y) < 0.01 && cellSize === 10;
         }
 
         // Update URL with current viewport position (debounced)
@@ -608,31 +607,33 @@
 
         function startViewportUrlUpdater(wasm) {
             function updateViewportUrl() {
-                const now = Date.now();
-                // Update URL at most once per second to avoid performance issues
-                if (now - lastViewportUpdate < 1000) {
-                    requestAnimationFrame(updateViewportUrl);
-                    return;
-                }
-
                 try {
                     const x = wasm.get_viewport_x();
                     const y = wasm.get_viewport_y();
                     const cellSize = wasm.get_cell_size();
 
-                    // Initialize lastViewportState on first call (don't update URL yet)
-                    if (lastViewportState === null) {
-                        lastViewportState = { x, y, cellSize };
-                        // Update reset button state on initial load
-                        const resetBtn = document.getElementById('reset-btn');
-                        if (resetBtn) {
-                            resetBtn.disabled = isViewportAtDefault(x, y, cellSize);
-                        }
+                    // Always update reset button state immediately (no throttling)
+                    const resetBtn = document.getElementById('reset-btn');
+                    if (resetBtn) {
+                        const isDefault = isViewportAtDefault(x, y, cellSize);
+                        resetBtn.disabled = isDefault;
+                    }
+
+                    const now = Date.now();
+                    // Update URL at most once per second to avoid performance issues
+                    if (now - lastViewportUpdate < 1000) {
                         requestAnimationFrame(updateViewportUrl);
                         return;
                     }
 
-                    // Only update if values changed significantly (avoid float precision noise)
+                    // Initialize lastViewportState on first call (don't update URL yet)
+                    if (lastViewportState === null) {
+                        lastViewportState = { x, y, cellSize };
+                        requestAnimationFrame(updateViewportUrl);
+                        return;
+                    }
+
+                    // Only update URL if values changed significantly (avoid float precision noise)
                     if (Math.abs(x - lastViewportState.x) > 0.01 ||
                         Math.abs(y - lastViewportState.y) > 0.01 ||
                         cellSize !== lastViewportState.cellSize) {
@@ -640,23 +641,26 @@
                         lastViewportState = { x, y, cellSize };
                         lastViewportUpdate = now;
 
-                        // Update reset button state
-                        const resetBtn = document.getElementById('reset-btn');
-                        if (resetBtn) {
-                            resetBtn.disabled = isViewportAtDefault(x, y, cellSize);
-                        }
-
                         // Get current URL parameters
                         const urlParams = new URLSearchParams(window.location.search);
 
-                        // Add viewport parameters (always include, no defaults)
-                        urlParams.set('vx', x.toFixed(2));
-                        urlParams.set('vy', y.toFixed(2));
-                        urlParams.set('vz', cellSize);
+                        // Add viewport parameters only if not at default values
+                        const isDefault = isViewportAtDefault(x, y, cellSize);
+                        if (isDefault) {
+                            // Remove viewport parameters when at default
+                            urlParams.delete('vx');
+                            urlParams.delete('vy');
+                            urlParams.delete('vzoom');
+                        } else {
+                            // Add viewport parameters when not at default
+                            urlParams.set('vx', x.toFixed(2));
+                            urlParams.set('vy', y.toFixed(2));
+                            urlParams.set('vzoom', cellSize);
+                        }
 
                         // Update URL without reloading
-                        const newUrl = '?' + urlParams.toString();
-                        if (window.location.search !== newUrl) {
+                        const newUrl = urlParams.toString() ? '?' + urlParams.toString() : window.location.pathname;
+                        if (window.location.search !== newUrl.replace(window.location.pathname, '')) {
                             window.history.replaceState(null, '', newUrl);
                         }
                     }
