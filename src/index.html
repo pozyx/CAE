@@ -361,6 +361,18 @@
             const statusEl = document.getElementById('status');
             statusEl.textContent = 'Preparing canvas...';
 
+            // Check for WebGPU support FIRST before doing anything
+            if (!navigator.gpu) {
+                statusEl.className = 'error';
+                statusEl.innerHTML = 'Error: WebGPU is not supported in this browser.<br><br>' +
+                    'Please use:<br>' +
+                    '• Chrome/Edge 113+ (enabled by default)<br>' +
+                    '• Safari 18+ (Technical Preview)<br>' +
+                    '• Firefox 121+ (enable in about:config)<br><br>' +
+                    'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank">caniuse.com/webgpu</a>';
+                return;
+            }
+
             try {
                 // CRITICAL: Set canvas size FIRST and wait for browser to process it
                 const canvas = document.getElementById('cae-canvas');
