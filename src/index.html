@@ -37,7 +37,50 @@
             width: 230px;
             z-index: 1000;
             max-height: calc(100vh - 24px);
+            overflow: visible;
+            transition: width 0.3s ease, padding 0.3s ease;
+        }
+
+        #controls-content {
+            max-height: calc(100vh - 80px);
             overflow-y: auto;
+        }
+
+        #controls.collapsed {
+            width: auto;
+            padding: 12px;
+            overflow: visible;
+        }
+
+        #controls.collapsed #controls-content {
+            display: none;
+        }
+
+        #toggle-btn {
+            position: absolute;
+            top: 6px;
+            right: 12px;
+            width: 20px;
+            height: 20px;
+            background: transparent;
+            border: 1px solid #666;
+            color: #999;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #toggle-btn:hover {
+            border-color: #fff;
+            color: #fff;
+            background: #111;
+        }
+
+        #controls.collapsed #toggle-btn {
+            right: 12px;
         }
 
         #controls-title {
@@ -49,6 +92,12 @@
             font-weight: bold;
             letter-spacing: 0.1em;
             margin-bottom: 2px;
+            line-height: 20px;
+        }
+
+        #controls.collapsed #controls-title {
+            padding-right: 28px;
+            margin-bottom: 0;
         }
 
         #controls-title .subtitle {
@@ -56,6 +105,7 @@
             color: #666;
             letter-spacing: 0.05em;
             text-transform: uppercase;
+            margin-top: 10px;
         }
 
         #controls-header {
@@ -225,19 +275,19 @@
         }
 
         /* Scrollbar styling */
-        #controls::-webkit-scrollbar {
+        #controls-content::-webkit-scrollbar {
             width: 6px;
         }
 
-        #controls::-webkit-scrollbar-track {
+        #controls-content::-webkit-scrollbar-track {
             background: #000;
         }
 
-        #controls::-webkit-scrollbar-thumb {
+        #controls-content::-webkit-scrollbar-thumb {
             background: #333;
         }
 
-        #controls::-webkit-scrollbar-thumb:hover {
+        #controls-content::-webkit-scrollbar-thumb:hover {
             background: #666;
         }
     </style>
@@ -246,10 +296,12 @@
     <canvas id="cae-canvas"></canvas>
 
     <div id="controls">
+        <button id="toggle-btn" onclick="toggleControls()">☰</button>
         <div id="controls-title">
-            <h2>CAE</h2>
+            <h2>CAE <span id="rule-display"></span></h2>
             <div class="subtitle">Cellular Automaton Engine</div>
         </div>
+        <div id="controls-content">
         <div id="controls-header">
             <a href="https://github.com/pozyx/CAE" target="_blank">github.com/pozyx/CAE</a>
             <span class="version">v2.0.0</span>
@@ -275,17 +327,42 @@
 
         <div class="info-box">
             <strong>Controls:</strong><br>
-            • Drag mouse / one finger: Pan viewport<br>
-            • Scroll mouse wheel / pinch: Zoom in/out<br>
+            • Drag / one finger: Pan viewport<br>
+            • Scroll wheel / pinch: Zoom in/out<br>
             • 0 key: Reset viewport
         </div>
+        </div> <!-- end controls-content -->
     </div>
+
+    <script type="module">
+        // Toggle controls panel
+        function toggleControls() {
+            const controls = document.getElementById('controls');
+            const btn = document.getElementById('toggle-btn');
+            controls.classList.toggle('collapsed');
+            btn.textContent = controls.classList.contains('collapsed') ? '☰' : '✕';
+        }
+        window.toggleControls = toggleControls;
+
+        // Update rule display when rule changes
+        function updateRuleDisplay() {
+            const rule = document.getElementById('rule').value;
+            document.getElementById('rule-display').textContent = `(Rule ${rule})`;
+        }
+        window.updateRuleDisplay = updateRuleDisplay;
+
+        document.getElementById('rule').addEventListener('input', updateRuleDisplay);
+
+        // Initialize rule display
+        updateRuleDisplay();
+    </script>
 
     <script type="module">
         // Load parameters from URL if present
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('rule')) {
             document.getElementById('rule').value = urlParams.get('rule');
+            window.updateRuleDisplay(); // Update display after loading from URL
         }
         if (urlParams.has('initial-state')) {
             document.getElementById('initial-state').value = urlParams.get('initial-state');
