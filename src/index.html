@@ -201,6 +201,18 @@
             background: #ccc;
         }
 
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: #333;
+            color: #666;
+        }
+
+        button:disabled:hover {
+            background: #000;
+            color: #666;
+        }
+
         button.secondary {
             border-color: #666;
             color: #999;
@@ -320,15 +332,15 @@
             <small>Binary string or empty for single cell</small>
         </div>
 
-        <button onclick="startCAE()">Apply</button>
+        <button id="apply-btn" onclick="startCAE()" disabled>Apply</button>
         <button class="secondary" onclick="resetView()">Reset Viewport</button>
 
         <div id="status">&nbsp;</div>
 
         <div class="info-box">
             <strong>Controls:</strong><br>
-            • Drag / one finger: Pan viewport<br>
-            • Scroll wheel / pinch: Zoom in/out<br>
+            • Drag mouse / one finger: Pan viewport<br>
+            • Scroll mouse wheel / pinch: Zoom in/out<br>
             • 0 key: Reset viewport
         </div>
         </div> <!-- end controls-content -->
@@ -351,7 +363,29 @@
         }
         window.updateRuleDisplay = updateRuleDisplay;
 
-        document.getElementById('rule').addEventListener('input', updateRuleDisplay);
+        // Track initial values and enable Apply button on change
+        let initialRule = document.getElementById('rule').value;
+        let initialState = document.getElementById('initial-state').value;
+
+        function updateInitialValues() {
+            initialRule = document.getElementById('rule').value;
+            initialState = document.getElementById('initial-state').value;
+            checkForChanges();
+        }
+        window.updateInitialValues = updateInitialValues;
+
+        function checkForChanges() {
+            const currentRule = document.getElementById('rule').value;
+            const currentState = document.getElementById('initial-state').value;
+            const hasChanges = currentRule !== initialRule || currentState !== initialState;
+            document.getElementById('apply-btn').disabled = !hasChanges;
+        }
+
+        document.getElementById('rule').addEventListener('input', () => {
+            updateRuleDisplay();
+            checkForChanges();
+        });
+        document.getElementById('initial-state').addEventListener('input', checkForChanges);
 
         // Initialize rule display
         updateRuleDisplay();
@@ -366,6 +400,12 @@
         }
         if (urlParams.has('initial-state')) {
             document.getElementById('initial-state').value = urlParams.get('initial-state');
+        }
+
+        // Update initial values after loading from URL to prevent false change detection
+        // This needs to happen after URL parameters are loaded
+        if (window.updateInitialValues) {
+            window.updateInitialValues();
         }
 
         // Load viewport parameters from URL if present
@@ -589,7 +629,10 @@
             if (field) {
                 field.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        startCAE();
+                        const applyBtn = document.getElementById('apply-btn');
+                        if (!applyBtn.disabled) {
+                            startCAE();
+                        }
                     }
                 });
             }
