@@ -12,7 +12,6 @@ use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
     event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
@@ -1153,6 +1152,265 @@ impl RenderApp {
             }
         }
     }
+
+    /// Handle redraw event with debouncing and error recovery
+    fn handle_redraw_event(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        // Skip rendering when window is minimized (width or height = 0)
+        // This prevents "Render error: Outdated" spam in logs
+        if self.window_width == 0 || self.window_height == 0 {
+            return;
+        }
+
+        // Check if viewport reset was requested from web (via JavaScript)
+        #[cfg(target_arch = "wasm32")]
+        {
+            use std::sync::atomic::Ordering;
+            if crate::web::RESET_VIEWPORT_REQUESTED.load(Ordering::SeqCst) {
+                self.reset_viewport();
+                crate::web::RESET_VIEWPORT_REQUESTED.store(false, Ordering::SeqCst);
+            }
+        }
+
+        // Check if debounce period has elapsed and recompute if needed
+        self.check_debounce_and_recompute();
+
+        match self.render() {
+            Ok(_) => {}
+            Err(wgpu::SurfaceError::Lost) => {
+                // Surface was lost (GPU context loss, window minimize/restore, etc.)
+                // Try to reconfigure the surface
+                #[cfg(target_arch = "wasm32")]
+                log::warn!("Surface lost, attempting to reconfigure");
+
+                if let (Some(window), Some(surface), Some(config)) =
+                    (&self.window, &self.surface, &mut self.surface_config) {
+                    let size = window.inner_size();
+                    config.width = size.width;
+                    config.height = size.height;
+                    surface.configure(&self.device, &config);
+
+                    #[cfg(target_arch = "wasm32")]
+                    log::info!("Surface reconfigured successfully");
+                } else {
+                    #[cfg(target_arch = "wasm32")]
+                    log::error!("Cannot reconfigure surface: window, surface, or config is None");
+                }
+            }
+            Err(wgpu::SurfaceError::OutOfMemory) => {
+                #[cfg(target_arch = "wasm32")]
+                log::error!("Out of GPU memory, exiting");
+                event_loop.exit();
+            }
+            Err(e) => {
+                log_warn!("Render error: {:?}", e);
+            }
+        }
+    }
+
+    /// Handle window resize event
+    fn handle_resize_event(&mut self, physical_size: winit::dpi::PhysicalSize<u32>) {
+        // On web, initial resize event may occur after window creation (e.g., high-DPI displays)
+        // Recalculate viewport offset to maintain the correct center position
+        #[cfg(target_arch = "wasm32")]
+        {
+            if self.last_viewport_change.is_none() {
+                let old_width = self.window_width;
+                let new_width = physical_size.width;
+
+                if old_width != new_width {
+                    if !self.url_params_applied {
+                        // First resize on web with no URL params - recalculate offset to maintain centered origin
+                        let visible_cells_x = new_width as f32 / self.current_cell_size as f32;
+                        self.viewport.offset_x = -visible_cells_x / 2.0;
+                    } else {
+                        // First resize on web WITH URL params - recalculate offset to maintain center position from URL
+                        // Calculate current center position
+                        let old_visible_x = old_width as f32 / self.current_cell_size as f32;
+                        let center_x = self.viewport.offset_x + (old_visible_x / 2.0);
+
+                        // Recalculate offset for new width to maintain same center
+                        let new_visible_x = new_width as f32 / self.current_cell_size as f32;
+                        self.viewport.offset_x = center_x - (new_visible_x / 2.0);
+                    }
+                }
+            }
+        }
+
+        // Update window dimensions immediately (even if minimized)
+        // This ensures RedrawRequested knows not to render
+        self.window_width = physical_size.width;
+        self.window_height = physical_size.height;
+
+        // Skip surface reconfiguration when window is minimized (width or height = 0)
+        // This prevents wgpu errors about zero-sized surfaces
+        if physical_size.width == 0 || physical_size.height == 0 {
+            return;
+        }
+
+        // Update surface configuration for new window size
+        if let (Some(config), Some(surface)) = (&mut self.surface_config, &self.surface) {
+            config.width = physical_size.width;
+            config.height = physical_size.height;
+            surface.configure(&self.device, config);
+        }
+
+        // Detect which edge(s) are being resized by tracking window position
+        if let Some(window) = &self.window {
+            if let Ok(outer_position) = window.outer_position() {
+                let new_pos = (outer_position.x, outer_position.y);
+
+                if let Some(old_pos) = self.window_position {
+                    let old_width = self.window_width;
+                    let old_height = self.window_height;
+                    let new_width = physical_size.width;
+                    let new_height = physical_size.height;
+
+                    // Calculate visible cells
+                    let old_visible_x = old_width as f32 / self.current_cell_size as f32;
+                    let new_visible_x = new_width as f32 / self.current_cell_size as f32;
+                    let old_visible_y = old_height as f32 / self.current_cell_size as f32;
+                    let new_visible_y = new_height as f32 / self.current_cell_size as f32;
+
+                    // If window position changed, we're resizing from left or top
+                    if new_pos.0 != old_pos.0 {
+                        // Left edge moved - adjust offset to keep right edge fixed
+                        let old_right = self.viewport.offset_x + old_visible_x;
+                        self.viewport.offset_x = old_right - new_visible_x;
+                    }
+
+                    if new_pos.1 != old_pos.1 {
+                        // Top edge moved - adjust offset to keep bottom edge fixed
+                        let old_bottom = self.viewport.offset_y + old_visible_y;
+                        self.viewport.offset_y = old_bottom - new_visible_y;
+                        // Clamp to not go below 0
+                        self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+                    }
+                }
+
+                self.window_position = Some(new_pos);
+            }
+        }
+
+        // Mark for recompute - after debounce we'll compute for new viewport
+        self.mark_viewport_changed();
+    }
+
+    /// Handle mouse wheel zoom event
+    fn handle_mouse_wheel_event(&mut self, delta: winit::event::MouseScrollDelta) {
+        let delta_y = match delta {
+            winit::event::MouseScrollDelta::LineDelta(_, y) => y,
+            winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 10.0,
+        };
+
+        // Use tracked cursor position
+        let (cursor_x, cursor_y) = self.cursor_position;
+        self.handle_zoom(delta_y, cursor_x, cursor_y);
+    }
+
+    /// Handle cursor moved event for dragging
+    fn handle_cursor_moved_event(&mut self, position: winit::dpi::PhysicalPosition<f64>) {
+        // Track cursor position
+        self.cursor_position = (position.x, position.y);
+
+        if let Some(ref mut drag) = self.drag_state {
+            if drag.active {
+                // Calculate delta in screen pixels
+                let delta_x = position.x - drag.start_x;
+                let delta_y = position.y - drag.start_y;
+
+                // Convert to cell delta
+                let visible_cells_x = ((self.window_width as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
+                let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
+
+                let delta_cells_x = -(delta_x as f32 / self.window_width as f32) * visible_cells_x;
+                let delta_cells_y = -(delta_y as f32 / self.window_height as f32) * visible_cells_y;
+
+                // Apply offset from drag start position
+                self.viewport.offset_x = drag.viewport_at_start.offset_x + delta_cells_x;
+                self.viewport.offset_y = drag.viewport_at_start.offset_y + delta_cells_y;
+
+                // Clamp offset_y to not go below 0
+                self.viewport.offset_y = self.viewport.offset_y.max(0.0);
+
+                self.mark_viewport_changed();
+
+                // Update URL state for web (only after user interaction)
+                #[cfg(target_arch = "wasm32")]
+                self.update_viewport_state_for_url();
+            }
+        }
+    }
+
+    /// Handle mouse button input for drag start/stop
+    fn handle_mouse_input_event(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
+        if button == winit::event::MouseButton::Left {
+            match state {
+                winit::event::ElementState::Pressed => {
+                    // Start drag - change cursor to hand
+                    if let Some(window) = &self.window {
+                        window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Grabbing));
+                    }
+
+                    let (pos_x, pos_y) = self.cursor_position;
+
+                    self.drag_state = Some(DragState {
+                        active: true,
+                        start_x: pos_x,
+                        start_y: pos_y,
+                        viewport_at_start: self.viewport.clone(),
+                    });
+                }
+                winit::event::ElementState::Released => {
+                    // End drag - restore default cursor
+                    if let Some(window) = &self.window {
+                        window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Default));
+                    }
+
+                    if let Some(ref mut drag) = self.drag_state {
+                        drag.active = false;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Handle keyboard input events
+    fn handle_keyboard_event(&mut self, event: &winit::event::KeyEvent, event_loop: &winit::event_loop::ActiveEventLoop) {
+        use winit::keyboard::{KeyCode, PhysicalKey};
+
+        if event.state == winit::event::ElementState::Pressed {
+            if let PhysicalKey::Code(keycode) = event.physical_key {
+                match keycode {
+                    KeyCode::F11 => {
+                        // Toggle fullscreen
+                        if let Some(window) = &self.window {
+                            let is_fullscreen = window.fullscreen().is_some();
+                            window.set_fullscreen(if is_fullscreen {
+                                None
+                            } else {
+                                Some(winit::window::Fullscreen::Borderless(None))
+                            });
+                        }
+                    }
+                    KeyCode::Escape => {
+                        // Exit fullscreen or close
+                        if let Some(window) = &self.window {
+                            if window.fullscreen().is_some() {
+                                window.set_fullscreen(None);
+                            } else {
+                                log_info!("Escape pressed, exiting...");
+                                event_loop.exit();
+                            }
+                        }
+                    }
+                    KeyCode::Digit0 | KeyCode::Numpad0 => {
+                        self.reset_viewport();
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 impl ApplicationHandler for RenderApp {
@@ -1174,249 +1432,22 @@ impl ApplicationHandler for RenderApp {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                // Skip rendering when window is minimized (width or height = 0)
-                // This prevents "Render error: Outdated" spam in logs
-                if self.window_width == 0 || self.window_height == 0 {
-                    return;
-                }
-
-                // Check if viewport reset was requested from web (via JavaScript)
-                #[cfg(target_arch = "wasm32")]
-                {
-                    use std::sync::atomic::Ordering;
-                    if crate::web::RESET_VIEWPORT_REQUESTED.load(Ordering::SeqCst) {
-                        self.reset_viewport();
-                        crate::web::RESET_VIEWPORT_REQUESTED.store(false, Ordering::SeqCst);
-                    }
-                }
-
-                // Check if debounce period has elapsed and recompute if needed
-                self.check_debounce_and_recompute();
-
-                match self.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => {
-                        // Surface was lost (GPU context loss, window minimize/restore, etc.)
-                        // Try to reconfigure the surface
-                        #[cfg(target_arch = "wasm32")]
-                        log::warn!("Surface lost, attempting to reconfigure");
-
-                        if let (Some(window), Some(surface), Some(config)) =
-                            (&self.window, &self.surface, &mut self.surface_config) {
-                            let size = window.inner_size();
-                            config.width = size.width;
-                            config.height = size.height;
-                            surface.configure(&self.device, &config);
-
-                            #[cfg(target_arch = "wasm32")]
-                            log::info!("Surface reconfigured successfully");
-                        } else {
-                            #[cfg(target_arch = "wasm32")]
-                            log::error!("Cannot reconfigure surface: window, surface, or config is None");
-                        }
-                    }
-                    Err(wgpu::SurfaceError::OutOfMemory) => {
-                        #[cfg(target_arch = "wasm32")]
-                        log::error!("Out of GPU memory, exiting");
-                        event_loop.exit();
-                    }
-                    Err(e) => {
-                        log_warn!("Render error: {:?}", e);
-                    }
-                }
+                self.handle_redraw_event(event_loop);
             }
             WindowEvent::Resized(physical_size) => {
-                // On web, initial resize event may occur after window creation (e.g., high-DPI displays)
-                // Recalculate viewport offset to maintain the correct center position
-                #[cfg(target_arch = "wasm32")]
-                {
-                    if self.last_viewport_change.is_none() {
-                        let old_width = self.window_width;
-                        let new_width = physical_size.width;
-
-                        if old_width != new_width {
-                            if !self.url_params_applied {
-                                // First resize on web with no URL params - recalculate offset to maintain centered origin
-                                let visible_cells_x = new_width as f32 / self.current_cell_size as f32;
-                                self.viewport.offset_x = -visible_cells_x / 2.0;
-                            } else {
-                                // First resize on web WITH URL params - recalculate offset to maintain center position from URL
-                                // Calculate current center position
-                                let old_visible_x = old_width as f32 / self.current_cell_size as f32;
-                                let center_x = self.viewport.offset_x + (old_visible_x / 2.0);
-
-                                // Recalculate offset for new width to maintain same center
-                                let new_visible_x = new_width as f32 / self.current_cell_size as f32;
-                                self.viewport.offset_x = center_x - (new_visible_x / 2.0);
-                            }
-                        }
-                    }
-                }
-
-                // Update window dimensions immediately (even if minimized)
-                // This ensures RedrawRequested knows not to render
-                self.window_width = physical_size.width;
-                self.window_height = physical_size.height;
-
-                // Skip surface reconfiguration when window is minimized (width or height = 0)
-                // This prevents wgpu errors about zero-sized surfaces
-                if physical_size.width == 0 || physical_size.height == 0 {
-                    return;
-                }
-
-                // Update surface configuration for new window size
-                if let (Some(config), Some(surface)) = (&mut self.surface_config, &self.surface) {
-                    config.width = physical_size.width;
-                    config.height = physical_size.height;
-                    surface.configure(&self.device, config);
-                }
-
-                // Detect which edge(s) are being resized by tracking window position
-                if let Some(window) = &self.window {
-                    if let Ok(outer_position) = window.outer_position() {
-                        let new_pos = (outer_position.x, outer_position.y);
-
-                        if let Some(old_pos) = self.window_position {
-                            let old_width = self.window_width;
-                            let old_height = self.window_height;
-                            let new_width = physical_size.width;
-                            let new_height = physical_size.height;
-
-                            // Calculate visible cells
-                            let old_visible_x = old_width as f32 / self.current_cell_size as f32;
-                            let new_visible_x = new_width as f32 / self.current_cell_size as f32;
-                            let old_visible_y = old_height as f32 / self.current_cell_size as f32;
-                            let new_visible_y = new_height as f32 / self.current_cell_size as f32;
-
-                            // If window position changed, we're resizing from left or top
-                            if new_pos.0 != old_pos.0 {
-                                // Left edge moved - adjust offset to keep right edge fixed
-                                let old_right = self.viewport.offset_x + old_visible_x;
-                                self.viewport.offset_x = old_right - new_visible_x;
-                            }
-
-                            if new_pos.1 != old_pos.1 {
-                                // Top edge moved - adjust offset to keep bottom edge fixed
-                                let old_bottom = self.viewport.offset_y + old_visible_y;
-                                self.viewport.offset_y = old_bottom - new_visible_y;
-                                // Clamp to not go below 0
-                                self.viewport.offset_y = self.viewport.offset_y.max(0.0);
-                            }
-                        }
-
-                        self.window_position = Some(new_pos);
-                    }
-                }
-
-                // Mark for recompute - after debounce we'll compute for new viewport
-                self.mark_viewport_changed();
+                self.handle_resize_event(physical_size);
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let delta_y = match delta {
-                    winit::event::MouseScrollDelta::LineDelta(_, y) => y,
-                    winit::event::MouseScrollDelta::PixelDelta(pos) => pos.y as f32 / 10.0,
-                };
-
-                // Use tracked cursor position
-                let (cursor_x, cursor_y) = self.cursor_position;
-                self.handle_zoom(delta_y, cursor_x, cursor_y);
+                self.handle_mouse_wheel_event(delta);
             }
             WindowEvent::CursorMoved { position, .. } => {
-                // Track cursor position
-                self.cursor_position = (position.x, position.y);
-
-                if let Some(ref mut drag) = self.drag_state {
-                    if drag.active {
-                        // Calculate delta in screen pixels
-                        let delta_x = position.x - drag.start_x;
-                        let delta_y = position.y - drag.start_y;
-
-                        // Convert to cell delta
-                        let visible_cells_x = ((self.window_width as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
-                        let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom) as f32;
-
-                        let delta_cells_x = -(delta_x as f32 / self.window_width as f32) * visible_cells_x;
-                        let delta_cells_y = -(delta_y as f32 / self.window_height as f32) * visible_cells_y;
-
-                        // Apply offset from drag start position
-                        self.viewport.offset_x = drag.viewport_at_start.offset_x + delta_cells_x;
-                        self.viewport.offset_y = drag.viewport_at_start.offset_y + delta_cells_y;
-
-                        // Clamp offset_y to not go below 0
-                        self.viewport.offset_y = self.viewport.offset_y.max(0.0);
-
-                        self.mark_viewport_changed();
-
-                        // Update URL state for web (only after user interaction)
-                        #[cfg(target_arch = "wasm32")]
-                        self.update_viewport_state_for_url();
-                    }
-                }
+                self.handle_cursor_moved_event(position);
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                if button == winit::event::MouseButton::Left {
-                    match state {
-                        winit::event::ElementState::Pressed => {
-                            // Start drag - change cursor to hand
-                            if let Some(window) = &self.window {
-                                window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Grabbing));
-                            }
-
-                            let (pos_x, pos_y) = self.cursor_position;
-
-                            self.drag_state = Some(DragState {
-                                active: true,
-                                start_x: pos_x,
-                                start_y: pos_y,
-                                viewport_at_start: self.viewport.clone(),
-                            });
-                        }
-                        winit::event::ElementState::Released => {
-                            // End drag - restore default cursor
-                            if let Some(window) = &self.window {
-                                window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Default));
-                            }
-
-                            if let Some(ref mut drag) = self.drag_state {
-                                drag.active = false;
-                            }
-                        }
-                    }
-                }
+                self.handle_mouse_input_event(state, button);
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.state == winit::event::ElementState::Pressed {
-                    if let PhysicalKey::Code(keycode) = event.physical_key {
-                        match keycode {
-                            KeyCode::F11 => {
-                                // Toggle fullscreen
-                                if let Some(window) = &self.window {
-                                    let is_fullscreen = window.fullscreen().is_some();
-                                    window.set_fullscreen(if is_fullscreen {
-                                        None
-                                    } else {
-                                        Some(winit::window::Fullscreen::Borderless(None))
-                                    });
-                                }
-                            }
-                            KeyCode::Escape => {
-                                // Exit fullscreen or close
-                                if let Some(window) = &self.window {
-                                    if window.fullscreen().is_some() {
-                                        window.set_fullscreen(None);
-                                    } else {
-                                        log_info!("Escape pressed, exiting...");
-                                        event_loop.exit();
-                                    }
-                                }
-                            }
-                            KeyCode::Digit0 | KeyCode::Numpad0 => {
-                                self.reset_viewport();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                self.handle_keyboard_event(&event, event_loop);
             }
             WindowEvent::Touch(touch) => {
                 self.handle_touch(touch);
