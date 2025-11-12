@@ -428,8 +428,7 @@ wasm-pack build --target web --out-dir pkg
 
 ## Roadmap
 
-- Additional CA variants (2D, totalistic, etc.)
-- Export capabilities (image, video)
+- Additional CA variants (totalistic, etc.)
 - Incremental computation and checkpointing optimizations (see [CACHING_NOTES.md](CACHING_NOTES.md))
 
 ## Development
