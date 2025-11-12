@@ -1,6 +1,6 @@
 # Caching System - Future Improvements Notes
 
-## Current Implementation (v1.2.0)
+## Current Implementation (v2.0)
 
 The current tile-based cache system:
 - Divides CA space into fixed 256×256 cell tiles
@@ -154,5 +154,5 @@ If incremental computation is still desired, **Option 3 (Hierarchical Checkpoint
 ---
 
 **Last Updated**: 2025-10-24
-**Version**: 1.2.0
+**Version**: 2.0
 **Status**: Incremental computation attempted and reverted due to padding incompatibility
