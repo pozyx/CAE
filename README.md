@@ -15,27 +15,26 @@ The application features an interactive viewport with pan and zoom controls, ena
 - **GPU-Accelerated Computation**: All cellular automaton iterations are computed on the GPU using WebGPU compute shaders
 - **Zero-Copy Architecture**: Data remains on the GPU throughout the computation pipeline - no CPU readback between iterations
 - **Tile-Based Caching**: Intelligent LRU cache system that stores 256×256 cell tiles to avoid redundant computation during navigation
+- **Efficient Rendering**: Only computes and renders visible cells based on current viewport
+- **Cross-Platform**: Runs as a native desktop application or in web browsers via WebAssembly
 - **Interactive Viewport**:
-  - Pan by dragging with the mouse or touch
-  - Zoom in/out using the scroll wheel or touch
-  - Configurable zoom limits
+  - Pan by dragging with the mouse or one finger touch
+  - Zoom in/out using the scroll wheel or pinch touch
   - Reset to initial view with '0' key
-- **Shareable URLs**: Share exact views with URL parameters including viewport position and zoom level
+- **Shareable URLs** (web): Share exact views with URL parameters including viewport position and zoom level
+- **Fullscreen Support**: Toggle fullscreen mode with F11
 - **Flexible Configuration**:
   - Support for all 256 Wolfram elementary CA rules (0-255)
   - Customizable initial states (binary strings or default single-cell)
-  - Adjustable cell size and window dimensions
-  - Configurable cache size
-- **Cross-Platform**: Runs as a native desktop application or in web browsers via WebAssembly
-- **Fullscreen Support**: Toggle fullscreen mode with F11 (desktop)
-- **Debounced Recomputation**: Smooth viewport changes with configurable debounce timing
-- **Efficient Rendering**: Only computes and renders visible cells based on current viewport
+  - Adjustable window dimensions (desktop)
+  - Configurable cache size (desktop)
+  - Smooth viewport changes with configurable debounce timing (desktop) - optional
 
 ## Quick Start
 
 ### Web Version (Instant - No Installation)
 
-Visit **[https://pozyx.github.io/CAE/](https://pozyx.github.io/CAE/)** in a WebGPU-compatible browser (Chrome 113+, Edge 113+, or Safari 18+).
+Visit **[https://pozyx.github.io/CAE/](https://pozyx.github.io/CAE/)** in a WebGPU-compatible browser (Chrome 113+, Edge 113+, Safari 18+ or Firefox 121+ (Windows)).
 
 ### Desktop Version
 
@@ -125,8 +124,9 @@ Options:
 
 The web version features an interactive control panel:
 
-**Basic Controls:**
+**Controls:**
 - **Rule**: Select any Wolfram rule (0-255)
+- **Initial State**: Customize initial state (binary string or default single-cell)
 - **Apply**: Apply settings and restart simulation
 - **Reset Viewport**: Return to initial view
 
@@ -143,8 +143,8 @@ Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy
 
 ### Interactive Controls
 
-- **Drag mouse / one finger**: Pan the viewport
-- **Scroll mouse wheel / pinch**: Zoom in/out
+- **Drag mouse / one finger touch**: Pan the viewport
+- **Scroll mouse wheel / pinch touch**: Zoom in/out
 - **0 key**: Reset viewport to initial position (centered, generation 0, zoom 1.0)
 - **F11**: Toggle fullscreen mode
 - **ESC**: Exit fullscreen or close application (desktop)
@@ -209,7 +209,7 @@ The viewport system uses world-space coordinates:
 
 - **Pan**: Translates the viewport origin in world space
 - **Zoom**: Scales the viewport (affects cell density and visible area)
-- **Debouncing**: Viewport changes are debounced to prevent excessive recomputation during continuous pan/zoom operations
+- **Debouncing**: Viewport changes are optionally debounced to prevent excessive recomputation during continuous pan/zoom operations
 
 When the viewport changes, the engine:
 1. Calculates the new visible region in world space
@@ -253,7 +253,6 @@ The web version requires WebGPU support:
 
 - **Chrome/Edge**: Version 113+ (enabled by default) - **Recommended for best performance**
 - **Firefox**: Version 121+ (enabled in Windows, for other platforms experimental, enable in `about:config`)
-  - Note: Firefox's WebGPU implementation is functional but may exhibit lower responsiveness during pan/zoom operations compared to Chrome/Edge due to differences in WASM execution and WebGPU maturity. Memory limits are also more conservative (~2GB vs ~4GB).
 - **Safari**: Version 18+ (Technical Preview)
 
 Check browser compatibility at: https://caniuse.com/webgpu
@@ -398,7 +397,6 @@ wasm-pack build --target web --out-dir pkg
 ### Web Version (WebAssembly)
 
 - **Fullscreen Mode**: The control overlay is not visible in fullscreen mode due to WebGPU canvas compositor limitations. To access controls in fullscreen, press ESC to exit fullscreen mode first.
-- **Memory Access Errors**: Intermittent "memory access out of bounds" errors may occur during panning, likely due to WASM linear memory interaction with GPU buffer cleanup. This is a rare race condition that does not affect functionality and can be safely ignored.
 
 ## Troubleshooting
 
