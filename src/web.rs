@@ -44,27 +44,25 @@ pub fn reset_viewport() {
 /// Get current viewport offset X (called from JavaScript for URL updates)
 #[wasm_bindgen]
 pub fn get_viewport_x() -> f32 {
-    VIEWPORT_OFFSET_X.lock()
+    *VIEWPORT_OFFSET_X.lock()
         .unwrap_or_else(|poisoned| {
             // Mutex was poisoned by a panic - recover by clearing the poison
             // and returning the value. This prevents cascading failures.
             log_warn!("Viewport X mutex was poisoned, recovering");
             poisoned.into_inner()
         })
-        .clone()
 }
 
 /// Get current viewport offset Y (called from JavaScript for URL updates)
 #[wasm_bindgen]
 pub fn get_viewport_y() -> f32 {
-    VIEWPORT_OFFSET_Y.lock()
+    *VIEWPORT_OFFSET_Y.lock()
         .unwrap_or_else(|poisoned| {
             // Mutex was poisoned by a panic - recover by clearing the poison
             // and returning the value. This prevents cascading failures.
             log_warn!("Viewport Y mutex was poisoned, recovering");
             poisoned.into_inner()
         })
-        .clone()
 }
 
 /// Get current cell size (called from JavaScript for URL updates)

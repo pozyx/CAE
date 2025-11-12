@@ -703,7 +703,6 @@ impl RenderApp {
 
             // Update viewport state globals to reflect the URL parameters
             // This ensures the URL updater gets the correct values
-            let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
             let url_center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
             *crate::web::VIEWPORT_OFFSET_X.lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner()) = url_center_x;
