@@ -10,6 +10,10 @@ CAE (Cellular Automaton Engine) visualizes [Wolfram's elementary cellular automa
 
 The application features an interactive viewport with pan and zoom controls, enabling you to navigate through the generated patterns and explore different regions of the automaton's evolution.
 
+Example of Rule 30 ![Example of Rule 30](image-1.png)
+Example of Rule 90 ![Example of Rule 90](image-2.png)
+Example of Rule 120 with customized initial state ![Example of Rule 120 with customized initial state](image-3.png)
+
 ## Features
 
 - **GPU-Accelerated Computation**: All cellular automaton iterations are computed on the GPU using WebGPU compute shaders
