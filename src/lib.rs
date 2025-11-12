@@ -20,7 +20,9 @@ pub mod constants {
     pub const DEFAULT_DEBOUNCE_MS: u64 = 0;
 
     /// Default cache settings
+    /// 64 tiles @ 256x256 cells = ~64MB cache
     pub const DEFAULT_CACHE_TILES: usize = 64;
+
     pub const DEFAULT_TILE_SIZE: u32 = 256;
 
     /// Default rule

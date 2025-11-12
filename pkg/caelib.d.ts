@@ -35,13 +35,13 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly reset_viewport: () => void;
   readonly get_viewport_x: () => number;
   readonly get_viewport_y: () => number;
   readonly get_cell_size: () => number;
   readonly start: () => any;
   readonly start_with_params: (a: number, b: number, c: number, d: number, e: number) => any;
   readonly set_initial_viewport: (a: number, b: number, c: number) => void;
-  readonly reset_viewport: () => void;
   readonly __externref_table_alloc: () => number;
   readonly __wbindgen_export_1: WebAssembly.Table;
   readonly __wbindgen_exn_store: (a: number) => void;
@@ -49,11 +49,12 @@ export interface InitOutput {
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_6: WebAssembly.Table;
-  readonly closure1182_externref_shim: (a: number, b: number, c: any) => void;
-  readonly closure523_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure1201_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure527_externref_shim: (a: number, b: number, c: any) => void;
+  readonly closure529_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure1134_externref_shim: (a: number, b: number, c: any) => void;
   readonly wasm_bindgen__convert__closures_____invoke__h83a3ad27906d3133: (a: number, b: number) => void;
-  readonly closure525_externref_shim: (a: number, b: number, c: any, d: any) => void;
-  readonly closure3029_externref_shim: (a: number, b: number, c: any, d: any) => void;
+  readonly closure3048_externref_shim: (a: number, b: number, c: any, d: any) => void;
   readonly __wbindgen_start: () => void;
 }
 

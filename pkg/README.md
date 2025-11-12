@@ -251,11 +251,29 @@ For detailed notes on potential caching optimizations and incremental computatio
 
 The web version requires WebGPU support:
 
-- **Chrome/Edge**: Version 113+ (enabled by default)
+- **Chrome/Edge**: Version 113+ (enabled by default) - **Recommended for best performance**
 - **Firefox**: Version 121+ (enabled in Windows, for other platforms experimental, enable in `about:config`)
+  - Note: Firefox's WebGPU implementation is functional but may exhibit lower responsiveness during pan/zoom operations compared to Chrome/Edge due to differences in WASM execution and WebGPU maturity. Memory limits are also more conservative (~2GB vs ~4GB).
 - **Safari**: Version 18+ (Technical Preview)
 
 Check browser compatibility at: https://caniuse.com/webgpu
+
+### GPU Selection on Web
+
+**Important limitation**: Browsers make the final decision about which GPU to use, and the `powerPreference` hint is often ignored:
+
+- **Chrome/Edge on Windows**: Currently ignores the high-performance GPU preference ([Chromium bug 369219127](https://issues.chromium.org/issues/369219127)). The browser uses its own heuristics based on canvas size, workload, and power mode.
+- **Firefox**: Similar behavior - browser controls GPU selection based on internal heuristics.
+- **Desktop version**: Reliably uses the discrete GPU when `--release` mode is used.
+
+**To verify which GPU your browser is using:**
+- Chrome/Edge: Visit `chrome://gpu` or `edge://gpu` and look for the WebGPU section
+- Firefox: Visit `about:support` and check Graphics → WebGPU Default Adapter
+
+**Workarounds to force discrete GPU:**
+- Windows: Use NVIDIA Control Panel or Windows Graphics Settings to set your browser to "High performance" mode
+- macOS: Automatic switching usually works based on workload
+- Best option: Use the desktop version for guaranteed discrete GPU usage and maximum performance
 
 ## Deploying to GitHub Pages
 

@@ -129,7 +129,9 @@ fn main() {
     println!();
 
     let event_loop = EventLoop::new().expect("Failed to create event loop");
-    event_loop.set_control_flow(ControlFlow::Poll);
+    // Use Wait mode for on-demand rendering (only render when something changes)
+    // This provides better battery life while maintaining full responsiveness
+    event_loop.set_control_flow(ControlFlow::Wait);
 
     let app = pollster::block_on(caelib::render::RenderApp::new(&event_loop, config));
 

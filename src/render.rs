@@ -195,6 +195,14 @@ impl RenderApp {
             .await
             .expect("Failed to create device");
 
+        // Set up error handling for GPU device
+        #[cfg(target_arch = "wasm32")]
+        device.on_uncaptured_error(Box::new(|error| {
+            log::error!("WebGPU uncaptured error: {:?}", error);
+            // Don't panic - just log the error and continue
+            // This prevents the "unreachable" crash when GPU operations fail
+        }));
+
         // Initial window dimensions
         let window_width = config.width;
         let window_height = config.height;
@@ -391,8 +399,10 @@ impl RenderApp {
         {
             use std::sync::atomic::Ordering;
             if crate::web::INITIAL_VIEWPORT_SET.load(Ordering::SeqCst) {
-                let center_x = *crate::web::INITIAL_OFFSET_X.lock().unwrap();
-                let initial_y = *crate::web::INITIAL_OFFSET_Y.lock().unwrap();
+                let center_x = *crate::web::INITIAL_OFFSET_X.lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                let initial_y = *crate::web::INITIAL_OFFSET_Y.lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
                 let initial_cell_size = crate::web::INITIAL_CELL_SIZE.load(Ordering::SeqCst);
 
                 // Convert from "center position" (URL vx) to internal offset
@@ -408,8 +418,10 @@ impl RenderApp {
                 // This ensures the URL updater gets the correct values
                 let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
                 let url_center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
-                *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = url_center_x;
-                *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
+                *crate::web::VIEWPORT_OFFSET_X.lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = url_center_x;
+                *crate::web::VIEWPORT_OFFSET_Y.lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = self.viewport.offset_y;
                 crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
 
                 // Mark that URL parameters were applied
@@ -467,7 +479,16 @@ impl RenderApp {
             ));
         }
 
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+        let window = match event_loop.create_window(window_attributes) {
+            Ok(w) => Arc::new(w),
+            Err(e) => {
+                #[cfg(target_arch = "wasm32")]
+                log::error!("Failed to create window: {:?}", e);
+                #[cfg(not(target_arch = "wasm32"))]
+                eprintln!("Failed to create window: {:?}", e);
+                panic!("Cannot create window: {:?}", e);
+            }
+        };
 
         // Update actual window dimensions (may differ from requested if fullscreen)
         let actual_size = window.inner_size();
@@ -482,7 +503,16 @@ impl RenderApp {
         }
 
         // Create surface
-        let surface = self.instance.create_surface(window.clone()).unwrap();
+        let surface = match self.instance.create_surface(window.clone()) {
+            Ok(s) => s,
+            Err(e) => {
+                #[cfg(target_arch = "wasm32")]
+                log::error!("Failed to create surface: {:?}", e);
+                #[cfg(not(target_arch = "wasm32"))]
+                eprintln!("Failed to create surface: {:?}", e);
+                panic!("Cannot create surface: {:?}", e);
+            }
+        };
 
         let surface_caps = surface.get_capabilities(&self.adapter);
 
@@ -502,6 +532,9 @@ impl RenderApp {
         // Choose best present mode for smooth rendering
         // Prefer Mailbox (triple buffering) for low latency smooth panning
         // Fall back to AutoVsync, then Fifo (VSync)
+        #[cfg(target_arch = "wasm32")]
+        log::info!("Available present modes: {:?}", surface_caps.present_modes);
+
         let present_mode = surface_caps.present_modes.iter()
             .copied()
             .find(|mode| matches!(mode, wgpu::PresentMode::Mailbox))
@@ -510,6 +543,9 @@ impl RenderApp {
                 .find(|mode| matches!(mode, wgpu::PresentMode::AutoVsync)))
             .unwrap_or(wgpu::PresentMode::Fifo);
 
+        #[cfg(target_arch = "wasm32")]
+        log::info!("Using present mode: {:?}", present_mode);
+        #[cfg(not(target_arch = "wasm32"))]
         println!("Using present mode: {:?}", present_mode);
 
         let config = wgpu::SurfaceConfiguration {
@@ -525,12 +561,19 @@ impl RenderApp {
 
         surface.configure(&self.device, &config);
 
-        self.window = Some(window);
+        self.window = Some(window.clone());
         self.surface = Some(surface);
         self.surface_config = Some(config);
 
+        // Store window reference for web reset_viewport function
+        #[cfg(target_arch = "wasm32")]
+        crate::web::set_window_ref(window.clone());
+
         // Now compute the CA
         self.compute_ca();
+
+        // Request initial redraw for on-demand rendering
+        window.request_redraw();
     }
 
     fn compute_ca(&mut self) {
@@ -542,7 +585,6 @@ impl RenderApp {
         let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom).ceil() as u32;
 
         // Safety: limit maximum buffer dimensions to prevent GPU issues
-        // More conservative limits to prevent driver crashes
         const MAX_CELLS_X: u32 = 5000;
         const MAX_CELLS_Y: u32 = 5000;
         const MIN_CELL_SIZE: u32 = 2;  // Prevent extremely small cells
@@ -677,6 +719,11 @@ impl RenderApp {
         self.last_viewport_change = Some(Instant::now());
         self.needs_recompute = true;
 
+        // Request redraw for on-demand rendering
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+
         // Note: We don't update viewport state globals here anymore
         // They are only updated when user explicitly pans/zooms via update_viewport_state_for_url()
     }
@@ -694,8 +741,10 @@ impl RenderApp {
         let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
         let center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
 
-        *crate::web::VIEWPORT_OFFSET_X.lock().unwrap() = center_x;
-        *crate::web::VIEWPORT_OFFSET_Y.lock().unwrap() = self.viewport.offset_y;
+        *crate::web::VIEWPORT_OFFSET_X.lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = center_x;
+        *crate::web::VIEWPORT_OFFSET_Y.lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = self.viewport.offset_y;
         crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
     }
 
@@ -757,6 +806,11 @@ impl RenderApp {
 
         self.needs_recompute = true;
         self.last_viewport_change = Some(Instant::now());
+
+        // Request redraw for on-demand rendering
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
 
         // Update viewport state for JavaScript URL updates (web only)
         #[cfg(target_arch = "wasm32")]
@@ -843,7 +897,15 @@ impl RenderApp {
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let surface = self.surface.as_ref().unwrap();
+        // Defensive: handle case where surface is None (GPU context loss on window restore)
+        let surface = match self.surface.as_ref() {
+            Some(s) => s,
+            None => {
+                #[cfg(target_arch = "wasm32")]
+                log::warn!("Render called but surface is None (GPU context lost)");
+                return Err(wgpu::SurfaceError::Lost);
+            }
+        };
         let output = surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -881,9 +943,9 @@ impl RenderApp {
 
             // Always render CA if we have a valid buffer (even during recomputation)
             // Uncomputed areas will show as black, giving immediate visual feedback
-            if self.bind_group.is_some() {
+            if let Some(bind_group) = &self.bind_group {
                 render_pass.set_pipeline(&self.render_pipeline);
-                render_pass.set_bind_group(0, self.bind_group.as_ref().unwrap(), &[]);
+                render_pass.set_bind_group(0, bind_group, &[]);
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
                 render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..1);
@@ -1147,17 +1209,36 @@ impl ApplicationHandler for RenderApp {
                 match self.render() {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost) => {
-                        let size = self.window.as_ref().unwrap().inner_size();
-                        if let Some(config) = &mut self.surface_config {
+                        // Surface was lost (GPU context loss, window minimize/restore, etc.)
+                        // Try to reconfigure the surface
+                        #[cfg(target_arch = "wasm32")]
+                        log::warn!("Surface lost, attempting to reconfigure");
+
+                        if let (Some(window), Some(surface), Some(config)) =
+                            (&self.window, &self.surface, &mut self.surface_config) {
+                            let size = window.inner_size();
                             config.width = size.width;
                             config.height = size.height;
-                            self.surface.as_ref().unwrap().configure(&self.device, config);
+                            surface.configure(&self.device, &config);
+
+                            #[cfg(target_arch = "wasm32")]
+                            log::info!("Surface reconfigured successfully");
+                        } else {
+                            #[cfg(target_arch = "wasm32")]
+                            log::error!("Cannot reconfigure surface: window, surface, or config is None");
                         }
                     }
                     Err(wgpu::SurfaceError::OutOfMemory) => {
+                        #[cfg(target_arch = "wasm32")]
+                        log::error!("Out of GPU memory, exiting");
                         event_loop.exit();
                     }
-                    Err(e) => eprintln!("Render error: {:?}", e),
+                    Err(e) => {
+                        #[cfg(target_arch = "wasm32")]
+                        log::warn!("Render error: {:?}", e);
+                        #[cfg(not(target_arch = "wasm32"))]
+                        eprintln!("Render error: {:?}", e);
+                    }
                 }
             }
             WindowEvent::Resized(physical_size) => {
@@ -1200,10 +1281,10 @@ impl ApplicationHandler for RenderApp {
                 }
 
                 // Update surface configuration for new window size
-                if let Some(config) = &mut self.surface_config {
+                if let (Some(config), Some(surface)) = (&mut self.surface_config, &self.surface) {
                     config.width = physical_size.width;
                     config.height = physical_size.height;
-                    self.surface.as_ref().unwrap().configure(&self.device, config);
+                    surface.configure(&self.device, config);
                 }
 
                 // Detect which edge(s) are being resized by tracking window position
@@ -1358,9 +1439,8 @@ impl ApplicationHandler for RenderApp {
             }
             _ => {}
         }
-
-        if let Some(window) = &self.window {
-            window.request_redraw();
-        }
+        // Note: We no longer unconditionally request redraw here.
+        // Redraws are requested only when viewport changes (mark_viewport_changed)
+        // This implements on-demand rendering to prevent continuous GPU usage.
     }
 }

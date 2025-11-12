@@ -9,6 +9,11 @@ use crate::{render::RenderApp, Config};
 // Flag to signal viewport reset from JavaScript
 pub(crate) static RESET_VIEWPORT_REQUESTED: AtomicBool = AtomicBool::new(false);
 
+// Store window reference for triggering redraws from JavaScript
+use std::sync::OnceLock;
+use winit::window::Window;
+static WINDOW_REF: OnceLock<std::sync::Arc<Window>> = OnceLock::new();
+
 // Viewport state exposed to JavaScript (for URL updates)
 pub(crate) static VIEWPORT_OFFSET_X: Mutex<f32> = Mutex::new(0.0);
 pub(crate) static VIEWPORT_OFFSET_Y: Mutex<f32> = Mutex::new(0.0);
@@ -20,22 +25,45 @@ pub(crate) static INITIAL_OFFSET_X: Mutex<f32> = Mutex::new(0.0);
 pub(crate) static INITIAL_OFFSET_Y: Mutex<f32> = Mutex::new(0.0);
 pub(crate) static INITIAL_CELL_SIZE: AtomicU32 = AtomicU32::new(10);
 
+/// Set the window reference (called internally after window creation)
+pub(crate) fn set_window_ref(window: std::sync::Arc<Window>) {
+    let _ = WINDOW_REF.set(window);
+}
+
 /// Request a viewport reset (called from JavaScript)
 #[wasm_bindgen]
 pub fn reset_viewport() {
     RESET_VIEWPORT_REQUESTED.store(true, Ordering::SeqCst);
+    // Request redraw to wake up event loop in Wait mode
+    if let Some(window) = WINDOW_REF.get() {
+        window.request_redraw();
+    }
 }
 
 /// Get current viewport offset X (called from JavaScript for URL updates)
 #[wasm_bindgen]
 pub fn get_viewport_x() -> f32 {
-    *VIEWPORT_OFFSET_X.lock().unwrap()
+    VIEWPORT_OFFSET_X.lock()
+        .unwrap_or_else(|poisoned| {
+            // Mutex was poisoned by a panic - recover by clearing the poison
+            // and returning the value. This prevents cascading failures.
+            log::warn!("Viewport X mutex was poisoned, recovering");
+            poisoned.into_inner()
+        })
+        .clone()
 }
 
 /// Get current viewport offset Y (called from JavaScript for URL updates)
 #[wasm_bindgen]
 pub fn get_viewport_y() -> f32 {
-    *VIEWPORT_OFFSET_Y.lock().unwrap()
+    VIEWPORT_OFFSET_Y.lock()
+        .unwrap_or_else(|poisoned| {
+            // Mutex was poisoned by a panic - recover by clearing the poison
+            // and returning the value. This prevents cascading failures.
+            log::warn!("Viewport Y mutex was poisoned, recovering");
+            poisoned.into_inner()
+        })
+        .clone()
 }
 
 /// Get current cell size (called from JavaScript for URL updates)
@@ -47,8 +75,16 @@ pub fn get_cell_size() -> u32 {
 /// Set initial viewport state from URL parameters (called from JavaScript)
 #[wasm_bindgen]
 pub fn set_initial_viewport(offset_x: f32, offset_y: f32, cell_size: u32) {
-    *INITIAL_OFFSET_X.lock().unwrap() = offset_x;
-    *INITIAL_OFFSET_Y.lock().unwrap() = offset_y;
+    *INITIAL_OFFSET_X.lock()
+        .unwrap_or_else(|poisoned| {
+            log::warn!("Initial offset X mutex was poisoned, recovering");
+            poisoned.into_inner()
+        }) = offset_x;
+    *INITIAL_OFFSET_Y.lock()
+        .unwrap_or_else(|poisoned| {
+            log::warn!("Initial offset Y mutex was poisoned, recovering");
+            poisoned.into_inner()
+        }) = offset_y;
     INITIAL_CELL_SIZE.store(cell_size, Ordering::SeqCst);
     INITIAL_VIEWPORT_SET.store(true, Ordering::SeqCst);
 }
@@ -100,8 +136,16 @@ pub async fn start_with_params(
 
     // Initialize viewport state globals to 0 to prevent stale values
     use std::sync::atomic::Ordering;
-    *VIEWPORT_OFFSET_X.lock().unwrap() = 0.0;
-    *VIEWPORT_OFFSET_Y.lock().unwrap() = 0.0;
+    *VIEWPORT_OFFSET_X.lock()
+        .unwrap_or_else(|poisoned| {
+            log::warn!("Viewport X mutex was poisoned during initialization, recovering");
+            poisoned.into_inner()
+        }) = 0.0;
+    *VIEWPORT_OFFSET_Y.lock()
+        .unwrap_or_else(|poisoned| {
+            log::warn!("Viewport Y mutex was poisoned during initialization, recovering");
+            poisoned.into_inner()
+        }) = 0.0;
     VIEWPORT_CELL_SIZE.store(10, Ordering::SeqCst);
 
     use crate::constants::{DEFAULT_CACHE_TILES, DEFAULT_TILE_SIZE};
@@ -127,7 +171,9 @@ pub async fn start_with_params(
     let event_loop = EventLoop::new()
         .map_err(|e| JsValue::from_str(&format!("Failed to create event loop: {:?}", e)))?;
 
-    event_loop.set_control_flow(ControlFlow::Poll);
+    // Use Wait mode for on-demand rendering (only render when something changes)
+    // This prevents continuous GPU usage and memory growth when idle
+    event_loop.set_control_flow(ControlFlow::Wait);
 
     let app = RenderApp::new(&event_loop, config).await;
 
