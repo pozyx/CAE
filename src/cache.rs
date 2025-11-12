@@ -1,21 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-
-// Logging macro that works in both desktop and web
-#[cfg(target_arch = "wasm32")]
-macro_rules! log_info {
-    ($($arg:tt)*) => {
-        log::info!($($arg)*);
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! log_info {
-    ($($arg:tt)*) => {
-        println!($($arg)*);
-    };
-}
+use crate::{log_info, log_warn};
 
 /// A tile represents a cached region of CA computation
 /// Grid-based: tile at (x, y) covers cells [x*256..(x+1)*256] and generations [y*256..(y+1)*256]
@@ -83,7 +69,7 @@ impl TileCache {
     pub fn new(max_tiles: usize, tile_size: u32) -> Self {
         // Validate tile_size
         let tile_size = if tile_size == 0 {
-            eprintln!("Warning: tile_size cannot be 0, using default 256");
+            log_warn!("tile_size cannot be 0, using default 256");
             256
         } else {
             tile_size

@@ -29,6 +29,49 @@ pub mod constants {
     pub const DEFAULT_RULE: u8 = 30;
 }
 
+/// Platform-aware logging macros
+/// Provides consistent logging interface for both desktop and web
+pub mod logging {
+    /// Log informational messages (println! on desktop, log::info! on web)
+    #[cfg(target_arch = "wasm32")]
+    #[macro_export]
+    macro_rules! log_info {
+        ($($arg:tt)*) => { log::info!($($arg)*) };
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[macro_export]
+    macro_rules! log_info {
+        ($($arg:tt)*) => { println!($($arg)*) };
+    }
+
+    /// Log warning messages (eprintln! on desktop, log::warn! on web)
+    #[cfg(target_arch = "wasm32")]
+    #[macro_export]
+    macro_rules! log_warn {
+        ($($arg:tt)*) => { log::warn!($($arg)*) };
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[macro_export]
+    macro_rules! log_warn {
+        ($($arg:tt)*) => { eprintln!("Warning: {}", format!($($arg)*)) };
+    }
+
+    /// Log error messages (eprintln! on desktop, log::error! on web)
+    #[cfg(target_arch = "wasm32")]
+    #[macro_export]
+    macro_rules! log_error {
+        ($($arg:tt)*) => { log::error!($($arg)*) };
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[macro_export]
+    macro_rules! log_error {
+        ($($arg:tt)*) => { eprintln!("Error: {}", format!($($arg)*)) };
+    }
+}
+
 /// Configuration for the CA engine
 /// This is a plain struct without CLI dependencies, usable from both desktop and web
 #[derive(Debug, Clone)]

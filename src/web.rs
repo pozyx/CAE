@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use winit::event_loop::{ControlFlow, EventLoop};
 
 use crate::{render::RenderApp, Config};
+use crate::{log_info, log_warn, log_error};
 
 // Flag to signal viewport reset from JavaScript
 pub(crate) static RESET_VIEWPORT_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -47,7 +48,7 @@ pub fn get_viewport_x() -> f32 {
         .unwrap_or_else(|poisoned| {
             // Mutex was poisoned by a panic - recover by clearing the poison
             // and returning the value. This prevents cascading failures.
-            log::warn!("Viewport X mutex was poisoned, recovering");
+            log_warn!("Viewport X mutex was poisoned, recovering");
             poisoned.into_inner()
         })
         .clone()
@@ -60,7 +61,7 @@ pub fn get_viewport_y() -> f32 {
         .unwrap_or_else(|poisoned| {
             // Mutex was poisoned by a panic - recover by clearing the poison
             // and returning the value. This prevents cascading failures.
-            log::warn!("Viewport Y mutex was poisoned, recovering");
+            log_warn!("Viewport Y mutex was poisoned, recovering");
             poisoned.into_inner()
         })
         .clone()
@@ -77,12 +78,12 @@ pub fn get_cell_size() -> u32 {
 pub fn set_initial_viewport(offset_x: f32, offset_y: f32, cell_size: u32) {
     *INITIAL_OFFSET_X.lock()
         .unwrap_or_else(|poisoned| {
-            log::warn!("Initial offset X mutex was poisoned, recovering");
+            log_warn!("Initial offset X mutex was poisoned, recovering");
             poisoned.into_inner()
         }) = offset_x;
     *INITIAL_OFFSET_Y.lock()
         .unwrap_or_else(|poisoned| {
-            log::warn!("Initial offset Y mutex was poisoned, recovering");
+            log_warn!("Initial offset Y mutex was poisoned, recovering");
             poisoned.into_inner()
         }) = offset_y;
     INITIAL_CELL_SIZE.store(cell_size, Ordering::SeqCst);
@@ -100,7 +101,7 @@ pub async fn start() -> Result<(), JsValue> {
     console_log::init_with_level(log::Level::Info)
         .expect("Failed to initialize logger");
 
-    log::info!("CAE WebAssembly module loaded");
+    log_info!("CAE WebAssembly module loaded");
 
     // Create default configuration
     let config = Config::default();
@@ -132,18 +133,18 @@ pub async fn start_with_params(
         let _ = console_log::init_with_level(log::Level::Info);
     });
 
-    log::info!("Starting CAE with rule {}, {}x{}", rule, width, height);
+    log_info!("Starting CAE with rule {}, {}x{}", rule, width, height);
 
     // Initialize viewport state globals to 0 to prevent stale values
     use std::sync::atomic::Ordering;
     *VIEWPORT_OFFSET_X.lock()
         .unwrap_or_else(|poisoned| {
-            log::warn!("Viewport X mutex was poisoned during initialization, recovering");
+            log_warn!("Viewport X mutex was poisoned during initialization, recovering");
             poisoned.into_inner()
         }) = 0.0;
     *VIEWPORT_OFFSET_Y.lock()
         .unwrap_or_else(|poisoned| {
-            log::warn!("Viewport Y mutex was poisoned during initialization, recovering");
+            log_warn!("Viewport Y mutex was poisoned during initialization, recovering");
             poisoned.into_inner()
         }) = 0.0;
     VIEWPORT_CELL_SIZE.store(10, Ordering::SeqCst);
@@ -164,7 +165,7 @@ pub async fn start_with_params(
     // but provides a safety layer in case JavaScript is bypassed
     if let Err(errors) = config.validate() {
         let error_msg = format!("Configuration validation failed:\n• {}", errors.join("\n• "));
-        log::error!("{}", error_msg);
+        log_error!("{}", error_msg);
         return Err(JsValue::from_str(&error_msg));
     }
 

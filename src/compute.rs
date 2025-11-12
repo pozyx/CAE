@@ -1,20 +1,6 @@
 use wgpu::util::DeviceExt;
 use crate::cache::{Tile, TileKey, TileCache};
-
-// Logging macro that works in both desktop and web
-#[cfg(target_arch = "wasm32")]
-macro_rules! log_info {
-    ($($arg:tt)*) => {
-        log::info!($($arg)*);
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! log_info {
-    ($($arg:tt)*) => {
-        println!($($arg)*);
-    };
-}
+use crate::{log_info, log_warn};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -372,18 +358,18 @@ pub fn run_ca_with_cache(
 
                 // Safety checks to prevent buffer overruns
                 if gen_in_tile >= tile_size as u32 || gen_in_viewport >= iterations {
-                    eprintln!("Warning: Generation out of bounds (tile: {}, viewport: {})", gen_in_tile, gen_in_viewport);
+                    log_warn!("Generation out of bounds (tile: {}, viewport: {})", gen_in_tile, gen_in_viewport);
                     continue;
                 }
 
                 if x_in_tile_buffer + slice_width > tile.simulated_width {
-                    eprintln!("Warning: Tile buffer x overflow ({} + {} > {})",
+                    log_warn!("Tile buffer x overflow ({} + {} > {})",
                         x_in_tile_buffer, slice_width, tile.simulated_width);
                     continue;
                 }
 
                 if x_in_output_buffer + slice_width > simulated_width {
-                    eprintln!("Warning: Output buffer x overflow ({} + {} > {})",
+                    log_warn!("Output buffer x overflow ({} + {} > {})",
                         x_in_output_buffer, slice_width, simulated_width);
                     continue;
                 }
@@ -434,8 +420,8 @@ pub fn run_ca(
     let padding = total_generations;
     let simulated_width = visible_width + 2 * padding;
 
-    println!("Visible width: {}, Simulated width: {} (padding: {})", visible_width, simulated_width, padding);
-    println!("Computing generations {} to {}, horizontal offset: {}",
+    log_info!("Visible width: {}, Simulated width: {} (padding: {})", visible_width, simulated_width, padding);
+    log_info!("Computing generations {} to {}, horizontal offset: {}",
         start_generation, start_generation + iterations, horizontal_offset);
 
     // We need to compute all generations from 0 to start_generation + iterations

@@ -17,6 +17,7 @@ use winit::{
 };
 
 use crate::{cache::TileCache, compute, constants::DEFAULT_CELL_SIZE, Config};
+use crate::{log_info, log_warn, log_error};
 
 /// Viewport state in world space coordinates
 #[derive(Debug, Clone)]
@@ -182,7 +183,7 @@ impl RenderApp {
             .expect("Failed to find an appropriate adapter");
 
         let info = adapter.get_info();
-        println!("Using GPU: {} ({:?})", info.name, info.backend);
+        log_info!("Using GPU: {} ({:?})", info.name, info.backend);
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
@@ -207,7 +208,7 @@ impl RenderApp {
         let window_width = config.width;
         let window_height = config.height;
 
-        println!("Initial window size: {}x{} pixels, cell size: {}px",
+        log_info!("Initial window size: {}x{} pixels, cell size: {}px",
             window_width, window_height, DEFAULT_CELL_SIZE);
 
         // Load shader
@@ -482,10 +483,7 @@ impl RenderApp {
         let window = match event_loop.create_window(window_attributes) {
             Ok(w) => Arc::new(w),
             Err(e) => {
-                #[cfg(target_arch = "wasm32")]
-                log::error!("Failed to create window: {:?}", e);
-                #[cfg(not(target_arch = "wasm32"))]
-                eprintln!("Failed to create window: {:?}", e);
+                log_error!("Failed to create window: {:?}", e);
                 panic!("Cannot create window: {:?}", e);
             }
         };
@@ -498,7 +496,7 @@ impl RenderApp {
             self.window_width = actual_size.width;
             self.window_height = actual_size.height;
         } else {
-            println!("Warning: Window reported size {}x{}, using config dimensions {}x{}",
+            log_warn!("Window reported size {}x{}, using config dimensions {}x{}",
                 actual_size.width, actual_size.height, self.window_width, self.window_height);
         }
 
@@ -506,10 +504,7 @@ impl RenderApp {
         let surface = match self.instance.create_surface(window.clone()) {
             Ok(s) => s,
             Err(e) => {
-                #[cfg(target_arch = "wasm32")]
-                log::error!("Failed to create surface: {:?}", e);
-                #[cfg(not(target_arch = "wasm32"))]
-                eprintln!("Failed to create surface: {:?}", e);
+                log_error!("Failed to create surface: {:?}", e);
                 panic!("Cannot create surface: {:?}", e);
             }
         };
@@ -543,10 +538,7 @@ impl RenderApp {
                 .find(|mode| matches!(mode, wgpu::PresentMode::AutoVsync)))
             .unwrap_or(wgpu::PresentMode::Fifo);
 
-        #[cfg(target_arch = "wasm32")]
-        log::info!("Using present mode: {:?}", present_mode);
-        #[cfg(not(target_arch = "wasm32"))]
-        println!("Using present mode: {:?}", present_mode);
+        log_info!("Using present mode: {:?}", present_mode);
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -577,7 +569,7 @@ impl RenderApp {
     }
 
     fn compute_ca(&mut self) {
-        println!("Computing cellular automaton...");
+        log_info!("Computing cellular automaton...");
 
         // Calculate visible cells based on window size, cell size, and zoom
         // Use ceil to include partial cells at the edges
@@ -590,16 +582,16 @@ impl RenderApp {
         const MIN_CELL_SIZE: u32 = 2;  // Prevent extremely small cells
 
         if self.current_cell_size < MIN_CELL_SIZE {
-            eprintln!("Warning: Cell size {} is too small (minimum {})",
+            log_warn!("Cell size {} is too small (minimum {})",
                 self.current_cell_size, MIN_CELL_SIZE);
-            eprintln!("Skipping computation to prevent GPU instability.");
+            log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
 
         if visible_cells_x > MAX_CELLS_X || visible_cells_y > MAX_CELLS_Y {
-            eprintln!("Warning: Requested dimensions {}x{} exceed safety limits ({}x{})",
+            log_warn!("Requested dimensions {}x{} exceed safety limits ({}x{})",
                 visible_cells_x, visible_cells_y, MAX_CELLS_X, MAX_CELLS_Y);
-            eprintln!("Skipping computation to prevent GPU instability.");
+            log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
 
@@ -608,9 +600,9 @@ impl RenderApp {
         const MAX_TOTAL_CELLS: u64 = 10_000_000;  // 10 million cells max
 
         if total_cells > MAX_TOTAL_CELLS {
-            eprintln!("Warning: Total cell count {} exceeds limit {}",
+            log_warn!("Total cell count {} exceeds limit {}",
                 total_cells, MAX_TOTAL_CELLS);
-            eprintln!("Skipping computation to prevent GPU instability.");
+            log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
 
@@ -626,9 +618,9 @@ impl RenderApp {
         // Horizontal offset in cells
         let horizontal_offset = self.viewport.offset_x as i32;
 
-        println!("Viewport - offset: ({:.1}, {:.1}), zoom: {:.2}",
+        log_info!("Viewport - offset: ({:.1}, {:.1}), zoom: {:.2}",
             self.viewport.offset_x, clamped_offset_y, self.viewport.zoom);
-        println!("Visible cells: {}x{}, iterations: {}", visible_cells_x, visible_cells_y, iterations);
+        log_info!("Visible cells: {}x{}, iterations: {}", visible_cells_x, visible_cells_y, iterations);
 
         // Run CA computation - result stays on GPU!
         let ca_result = if let Some(ref mut cache) = self.cache {
@@ -658,7 +650,7 @@ impl RenderApp {
             )
         };
 
-        println!("CA result - Simulated: {}x{}, Visible: {}x{}, Padding: {}",
+        log_info!("CA result - Simulated: {}x{}, Visible: {}x{}, Padding: {}",
             ca_result.simulated_width, ca_result.height,
             ca_result.visible_width, ca_result.height,
             ca_result.padding_left);
@@ -712,7 +704,7 @@ impl RenderApp {
         self.bind_group = Some(bind_group);
         self.needs_recompute = false;
 
-        println!("Computation complete! (zero-copy GPU rendering)");
+        log_info!("Computation complete! (zero-copy GPU rendering)");
     }
 
     fn mark_viewport_changed(&mut self) {
@@ -795,7 +787,7 @@ impl RenderApp {
 
     pub fn reset_viewport(&mut self) {
         // Reset viewport to initial state (origin at center horizontally, top vertically)
-        println!("Resetting viewport to initial state...");
+        log_info!("Resetting viewport to initial state...");
         self.current_cell_size = DEFAULT_CELL_SIZE;
         self.viewport.zoom = 1.0;
 
@@ -1183,7 +1175,7 @@ impl ApplicationHandler for RenderApp {
     ) {
         match event {
             WindowEvent::CloseRequested => {
-                println!("Close requested, exiting...");
+                log_info!("Close requested, exiting...");
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
@@ -1234,10 +1226,7 @@ impl ApplicationHandler for RenderApp {
                         event_loop.exit();
                     }
                     Err(e) => {
-                        #[cfg(target_arch = "wasm32")]
-                        log::warn!("Render error: {:?}", e);
-                        #[cfg(not(target_arch = "wasm32"))]
-                        eprintln!("Render error: {:?}", e);
+                        log_warn!("Render error: {:?}", e);
                     }
                 }
             }
@@ -1421,7 +1410,7 @@ impl ApplicationHandler for RenderApp {
                                     if window.fullscreen().is_some() {
                                         window.set_fullscreen(None);
                                     } else {
-                                        println!("Escape pressed, exiting...");
+                                        log_info!("Escape pressed, exiting...");
                                         event_loop.exit();
                                     }
                                 }
