@@ -396,41 +396,7 @@ impl RenderApp {
     fn init_window(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         // Apply initial viewport from URL parameters if set (web only)
         #[cfg(target_arch = "wasm32")]
-        {
-            use std::sync::atomic::Ordering;
-            if crate::web::INITIAL_VIEWPORT_SET.load(Ordering::SeqCst) {
-                let center_x = *crate::web::INITIAL_OFFSET_X.lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                let initial_y = *crate::web::INITIAL_OFFSET_Y.lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                let initial_cell_size = crate::web::INITIAL_CELL_SIZE.load(Ordering::SeqCst);
-
-                // Convert from "center position" (URL vx) to internal offset
-                // offset_x = world position at LEFT edge of screen
-                // center_x = world position at CENTER of screen
-                // So: offset_x = center_x - (visible_width / 2)
-                let visible_cells_x = self.window_width as f32 / initial_cell_size as f32;
-                self.viewport.offset_x = center_x - (visible_cells_x / 2.0);
-                self.viewport.offset_y = initial_y;
-                self.current_cell_size = initial_cell_size;
-
-                // Update viewport state globals to reflect the URL parameters
-                // This ensures the URL updater gets the correct values
-                let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
-                let url_center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
-                *crate::web::VIEWPORT_OFFSET_X.lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = url_center_x;
-                *crate::web::VIEWPORT_OFFSET_Y.lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = self.viewport.offset_y;
-                crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
-
-                // Mark that URL parameters were applied
-                self.url_params_applied = true;
-
-                // Clear the flag so we don't reapply on subsequent inits
-                crate::web::INITIAL_VIEWPORT_SET.store(false, Ordering::SeqCst);
-            }
-        }
+        self.apply_url_viewport_parameters();
 
         let mut window_attributes = Window::default_attributes()
             .with_title(format!("CAE - Cellular Automaton Engine | Rule {}", self.config.rule));
@@ -712,6 +678,45 @@ impl RenderApp {
 
         // Note: We don't update viewport state globals here anymore
         // They are only updated when user explicitly pans/zooms via update_viewport_state_for_url()
+    }
+
+    /// Apply initial viewport from URL parameters (web only)
+    #[cfg(target_arch = "wasm32")]
+    fn apply_url_viewport_parameters(&mut self) {
+        use std::sync::atomic::Ordering;
+
+        if crate::web::INITIAL_VIEWPORT_SET.load(Ordering::SeqCst) {
+            let center_x = *crate::web::INITIAL_OFFSET_X.lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let initial_y = *crate::web::INITIAL_OFFSET_Y.lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let initial_cell_size = crate::web::INITIAL_CELL_SIZE.load(Ordering::SeqCst);
+
+            // Convert from "center position" (URL vx) to internal offset
+            // offset_x = world position at LEFT edge of screen
+            // center_x = world position at CENTER of screen
+            // So: offset_x = center_x - (visible_width / 2)
+            let visible_cells_x = self.window_width as f32 / initial_cell_size as f32;
+            self.viewport.offset_x = center_x - (visible_cells_x / 2.0);
+            self.viewport.offset_y = initial_y;
+            self.current_cell_size = initial_cell_size;
+
+            // Update viewport state globals to reflect the URL parameters
+            // This ensures the URL updater gets the correct values
+            let visible_cells_x = self.window_width as f32 / self.current_cell_size as f32;
+            let url_center_x = self.viewport.offset_x + (visible_cells_x / 2.0);
+            *crate::web::VIEWPORT_OFFSET_X.lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = url_center_x;
+            *crate::web::VIEWPORT_OFFSET_Y.lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = self.viewport.offset_y;
+            crate::web::VIEWPORT_CELL_SIZE.store(self.current_cell_size, Ordering::SeqCst);
+
+            // Mark that URL parameters were applied
+            self.url_params_applied = true;
+
+            // Clear the flag so we don't reapply on subsequent inits
+            crate::web::INITIAL_VIEWPORT_SET.store(false, Ordering::SeqCst);
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
