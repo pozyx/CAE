@@ -804,27 +804,45 @@ impl RenderApp {
         self.update_viewport_state_for_url();
     }
 
-    fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
-        // Hardcoded zoom limits
-        // Zoom > 1.0 means zoomed IN (cells appear bigger)
-        // Zoom < 1.0 means zoomed OUT (cells appear smaller)
-        // zoom_factor = current_cell_size / base_cell_size
+    /// Calculate min and max cell sizes based on zoom limits
+    fn calculate_zoom_limits(&self) -> (u32, u32) {
         let base_cell_size = constants::DEFAULT_CELL_SIZE;
         let min_cell_size = (base_cell_size as f32 * constants::ZOOM_MIN).max(1.0) as u32;
         let max_cell_size = (base_cell_size as f32 * constants::ZOOM_MAX) as u32;
+        (min_cell_size, max_cell_size)
+    }
 
-        // Generate zoom levels dynamically based on limits
-        let zoom_levels: Vec<u32> = {
-            let mut levels = vec![
-                2, 3, 4, 5, 6, 7, 8, 9, 10,
-                12, 14, 16, 18, 20, 24, 28, 32, 36, 40,
-                45, 50, 60, 70, 80, 90, 100, 120, 140, 160, 180, 200,
-                250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000
-            ];
-            // Filter to only include levels within our zoom range
-            levels.retain(|&size| size >= min_cell_size && size <= max_cell_size);
-            levels
-        };
+    /// Generate available zoom levels within the min/max limits
+    fn generate_zoom_levels(&self, min_cell_size: u32, max_cell_size: u32) -> Vec<u32> {
+        let mut levels = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            12, 14, 15, 16, 18, 20, 24, 25, 28, 30, 32, 36, 40,
+            45, 50, 60, 70, 75, 80, 90, 100, 120, 140, 150, 160, 180, 200,
+            250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000
+        ];
+        levels.retain(|&size| size >= min_cell_size && size <= max_cell_size);
+        levels
+    }
+
+    /// Convert screen coordinates to world coordinates
+    fn screen_to_world(&self, screen_x: f64, screen_y: f64, cell_size: u32) -> (f32, f32) {
+        let visible_cells_x = self.window_width as f32 / cell_size as f32;
+        let visible_cells_y = self.window_height as f32 / cell_size as f32;
+
+        let cursor_frac_x = screen_x as f32 / self.window_width as f32;
+        let cursor_frac_y = screen_y as f32 / self.window_height as f32;
+
+        let world_x = self.viewport.offset_x + cursor_frac_x * visible_cells_x;
+        let world_y = self.viewport.offset_y + cursor_frac_y * visible_cells_y;
+
+        (world_x, world_y)
+    }
+
+    fn handle_zoom(&mut self, delta: f32, cursor_x: f64, cursor_y: f64) {
+        // Zoom > 1.0 means zoomed IN (cells appear bigger)
+        // Zoom < 1.0 means zoomed OUT (cells appear smaller)
+        let (min_cell_size, max_cell_size) = self.calculate_zoom_limits();
+        let zoom_levels = self.generate_zoom_levels(min_cell_size, max_cell_size);
 
         let old_cell_size = self.current_cell_size;
 
@@ -847,16 +865,11 @@ impl RenderApp {
         // Only update if cell size actually changed
         if new_cell_size != old_cell_size {
             // Calculate world position under cursor before zoom
-            let old_visible_cells_x = self.window_width as f32 / old_cell_size as f32;
-            let old_visible_cells_y = self.window_height as f32 / old_cell_size as f32;
+            let (world_x_at_cursor, world_y_at_cursor) = self.screen_to_world(cursor_x, cursor_y, old_cell_size);
 
-            // Cursor position as fraction of window
+            // Cursor position as fraction of window (needed for viewport adjustment)
             let cursor_frac_x = cursor_x as f32 / self.window_width as f32;
             let cursor_frac_y = cursor_y as f32 / self.window_height as f32;
-
-            // World cell position under cursor
-            let world_x_at_cursor = self.viewport.offset_x + cursor_frac_x * old_visible_cells_x;
-            let world_y_at_cursor = self.viewport.offset_y + cursor_frac_y * old_visible_cells_y;
 
             // Apply zoom
             self.current_cell_size = new_cell_size;
@@ -1056,17 +1069,11 @@ impl RenderApp {
                             let new_cell_size = (initial_cell_size as f32 * zoom_factor).max(1.0).min(500.0) as u32;
 
                             // Clamp to available zoom levels
-                            let min_cell_size = (constants::DEFAULT_CELL_SIZE as f32 * constants::ZOOM_MIN).max(1.0) as u32;
-                            let max_cell_size = (constants::DEFAULT_CELL_SIZE as f32 * constants::ZOOM_MAX) as u32;
+                            let (min_cell_size, max_cell_size) = self.calculate_zoom_limits();
                             let clamped_cell_size = new_cell_size.clamp(min_cell_size, max_cell_size);
 
                             // Find nearest zoom level
-                            let zoom_levels: Vec<u32> = {
-                                let mut levels = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500];
-                                levels.retain(|&z| z >= min_cell_size && z <= max_cell_size);
-                                levels
-                            };
-
+                            let zoom_levels = self.generate_zoom_levels(min_cell_size, max_cell_size);
                             let new_cell_size = zoom_levels.iter()
                                 .min_by_key(|&&level| ((level as i32) - (clamped_cell_size as i32)).abs())
                                 .copied()
@@ -1078,12 +1085,11 @@ impl RenderApp {
                                 let center_y = (y1 + y2) / 2.0;
 
                                 // Calculate world position at pinch center with old cell size
-                                let old_visible_x = self.window_width as f32 / self.current_cell_size as f32;
-                                let old_visible_y = self.window_height as f32 / self.current_cell_size as f32;
+                                let (world_x_at_cursor, world_y_at_cursor) = self.screen_to_world(center_x, center_y, self.current_cell_size);
+
+                                // Cursor position as fraction of window (needed for viewport adjustment)
                                 let cursor_frac_x = center_x as f32 / self.window_width as f32;
                                 let cursor_frac_y = center_y as f32 / self.window_height as f32;
-                                let world_x_at_cursor = self.viewport.offset_x + cursor_frac_x * old_visible_x;
-                                let world_y_at_cursor = self.viewport.offset_y + cursor_frac_y * old_visible_y;
 
                                 // Update cell size
                                 self.current_cell_size = new_cell_size;
