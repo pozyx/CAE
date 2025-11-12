@@ -345,14 +345,6 @@
     </div>
 
     <script type="module">
-        // WebGPU not supported error message
-        const WEBGPU_ERROR_MESSAGE = 'Error: WebGPU is not supported in this browser.<br><br>' +
-            'Please use:<br>' +
-            '• Chrome/Edge 113+ (enabled by default)<br>' +
-            '• Safari 18+ (Technical Preview)<br>' +
-            '• Firefox 121+ (enabled in Windows by default, for other platforms experimental, enable in about:config)<br><br>' +
-            'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank" style="color: #fff;">caniuse.com/webgpu</a>';
-
         // Toggle controls panel
         function toggleControls() {
             const controls = document.getElementById('controls');
@@ -428,6 +420,14 @@
     </script>
 
     <script type="module">
+        // WebGPU not supported error message
+        const WEBGPU_ERROR_MESSAGE = 'Error: WebGPU is not supported in this browser.<br><br>' +
+            'Please use:<br>' +
+            '• Chrome/Edge 113+ (enabled by default)<br>' +
+            '• Safari 18+ (Technical Preview)<br>' +
+            '• Firefox 121+ (enabled in Windows by default, for other platforms experimental, enable in about:config)<br><br>' +
+            'Check compatibility: <a href="https://caniuse.com/webgpu" target="_blank" style="color: #fff;">caniuse.com/webgpu</a>';
+
         // Load parameters from URL if present
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('rule')) {
