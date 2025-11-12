@@ -113,19 +113,19 @@ fn main() {
     // "Rule: " = 6 chars, so padding = 48 - 6 - value_len
     // "Initial State: " = 15 chars, so padding = 48 - 15 - value_len
 
-    println!("╔════════════════════════════════════════════════╗");
-    println!("║   CAE - Cellular Automaton Engine              ║");
-    println!("╠════════════════════════════════════════════════╣");
-    println!("║ Rule: {:<40} ║", config.rule);
-    println!("║ Initial State: {:<31} ║", initial_display);
-    println!("╠════════════════════════════════════════════════╣");
-    println!("║ Controls:                                      ║");
-    println!("║  • Drag mouse / one finger: Pan viewport       ║");
-    println!("║  • Scroll mouse wheel / pinch: Zoom in/out     ║");
-    println!("║  • 0: Reset viewport to initial position       ║");
-    println!("║  • F11: Toggle fullscreen                      ║");
-    println!("║  • ESC: Exit                                   ║");
-    println!("╚════════════════════════════════════════════════╝");
+    println!("╔══════════════════════════════════════════════════╗");
+    println!("║   CAE - Cellular Automaton Engine                ║");
+    println!("╠══════════════════════════════════════════════════╣");
+    println!("║ Rule: {:<40}   ║", config.rule);
+    println!("║ Initial State: {:<31}   ║", initial_display);
+    println!("╠══════════════════════════════════════════════════╣");
+    println!("║ Controls:                                        ║");
+    println!("║  • Drag to pan (mouse or touch)                  ║");
+    println!("║  • Scroll wheel or pinch to zoom                 ║");
+    println!("║  • 0: Reset viewport to initial position         ║");
+    println!("║  • F11: Toggle fullscreen                        ║");
+    println!("║  • ESC: Exit                                     ║");
+    println!("╚══════════════════════════════════════════════════╝");
     println!();
 
     let event_loop = EventLoop::new().expect("Failed to create event loop");

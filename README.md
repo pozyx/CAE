@@ -22,8 +22,8 @@ Example of Rule 120 with customized initial state ![Example of Rule 120 with cus
 - **Efficient Rendering**: Only computes and renders visible cells based on current viewport
 - **Cross-Platform**: Runs as a native desktop application or in web browsers via WebAssembly
 - **Interactive Viewport**:
-  - Pan by dragging with the mouse or one finger touch
-  - Zoom in/out using the scroll wheel or pinch touch
+  - Pan by dragging (mouse or touch)
+  - Zoom in/out with scroll wheel or pinch
   - Reset to initial view with '0' key
 - **Shareable URLs** (web): Share exact views with URL parameters including viewport position and zoom level
 - **Fullscreen Support**: Toggle fullscreen mode with F11
@@ -38,7 +38,7 @@ Example of Rule 120 with customized initial state ![Example of Rule 120 with cus
 
 ### Web Version (Instant - No Installation)
 
-Visit **[https://pozyx.github.io/CAE/](https://pozyx.github.io/CAE/)** in a WebGPU-compatible browser (Chrome 113+, Edge 113+, Safari 18+ or Firefox 121+ (Windows)).
+Visit **[https://pozyx.github.io/CAE/](https://pozyx.github.io/CAE/)** in a WebGPU-compatible browser (Chrome 113+, Edge 113+, Safari 18+ or Firefox 121+ on Windows).
 
 ### Desktop Version
 
@@ -147,8 +147,8 @@ Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy
 
 ### Interactive Controls
 
-- **Drag mouse / one finger touch**: Pan the viewport
-- **Scroll mouse wheel / pinch touch**: Zoom in/out
+- **Drag to pan** (mouse or touch)
+- **Scroll wheel or pinch to zoom**
 - **0 key**: Reset viewport to initial position (centered, generation 0, zoom 1.0)
 - **F11**: Toggle fullscreen mode
 - **ESC**: Exit fullscreen or close application (desktop)
@@ -256,7 +256,7 @@ For detailed notes on potential caching optimizations and incremental computatio
 The web version requires WebGPU support:
 
 - **Chrome/Edge**: Version 113+ (enabled by default) - **Recommended for best performance**
-- **Firefox**: Version 121+ (enabled in Windows, for other platforms experimental, enable in `about:config`)
+- **Firefox**: Version 121+ (enabled in Windows by default, for other platforms experimental, enable in `about:config`)
 - **Safari**: Version 18+ (Technical Preview)
 
 Check browser compatibility at: https://caniuse.com/webgpu
