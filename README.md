@@ -137,9 +137,9 @@ Share specific configurations and views using URL parameters:
 - `initial-state` - Initial state binary string (e.g., `&initial-state=00100`)
 - `vx` - Viewport X offset (auto-updated when panning)
 - `vy` - Viewport Y offset (auto-updated when panning)
-- `vz` - Viewport zoom level (auto-updated when zooming)
+- `vzoom` - Viewport zoom level (cell size in pixels, auto-updated when zooming)
 
-Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy=100.00&vz=5`
+Example: `https://pozyx.github.io/CAE/?rule=110&initial-state=00100&vx=-50.23&vy=100.00&vzoom=20`
 
 ### Interactive Controls
 
@@ -426,9 +426,9 @@ wasm-pack build --target web --out-dir pkg
 
 ## Roadmap
 
-- Touch controls for mobile devices
 - Additional CA variants (2D, totalistic, etc.)
 - Export capabilities (image, video)
+- Incremental computation and checkpointing optimizations (see [CACHING_NOTES.md](CACHING_NOTES.md))
 
 ## Development
 
