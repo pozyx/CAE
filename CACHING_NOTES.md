@@ -3,7 +3,7 @@
 ## Current Implementation (v2.0)
 
 The current tile-based cache system:
-- Divides CA space into fixed 256×256 cell tiles
+- Divides CA space into configurable NxN cell tiles (default: 256×256)
 - Each tile identified by grid coordinates `(tile_x, tile_y)`
 - **All tiles compute from generation 0**
 - LRU eviction when cache is full
