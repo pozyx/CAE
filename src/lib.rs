@@ -27,6 +27,23 @@ pub mod constants {
 
     /// Default rule
     pub const DEFAULT_RULE: u8 = 30;
+
+    /// Zoom limits (multiplicative factors)
+    pub const ZOOM_MIN: f32 = 0.1;   // Minimum zoom (allows very small cells)
+    pub const ZOOM_MAX: f32 = 50.0;  // Maximum zoom (allows very large cells)
+
+    /// GPU safety limits to prevent buffer overflow and instability
+    pub const MAX_CELLS_X: u32 = 5000;           // Maximum horizontal cells
+    pub const MAX_CELLS_Y: u32 = 5000;           // Maximum vertical cells
+    pub const MIN_CELL_SIZE: u32 = 2;            // Minimum cell size in pixels
+    pub const MAX_TOTAL_CELLS: u64 = 10_000_000; // Maximum total cells (10 million)
+
+    /// GPU compute settings
+    pub const COMPUTE_BATCH_SIZE: u32 = 32;      // Batch size for compute operations
+    pub const COMPUTE_WORKGROUP_SIZE: u32 = 256; // Must match ca_compute.wgsl @workgroup_size
+
+    /// Render performance settings
+    pub const RENDER_PARAMS_THROTTLE_MS: u64 = 16; // ~60 FPS throttle for param updates
 }
 
 /// Platform-aware logging macros

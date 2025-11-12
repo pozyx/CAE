@@ -16,7 +16,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{cache::TileCache, compute, constants::DEFAULT_CELL_SIZE, Config};
+use crate::{cache::TileCache, compute, constants, Config};
 use crate::{log_info, log_warn, log_error};
 
 /// Viewport state in world space coordinates
@@ -209,7 +209,7 @@ impl RenderApp {
         let window_height = config.height;
 
         log_info!("Initial window size: {}x{} pixels, cell size: {}px",
-            window_width, window_height, DEFAULT_CELL_SIZE);
+            window_width, window_height, constants::DEFAULT_CELL_SIZE);
 
         // Load shader
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -309,11 +309,11 @@ impl RenderApp {
 
         // Create params buffer (will be updated after CA computation)
         let params = RenderParams {
-            visible_width: window_width / DEFAULT_CELL_SIZE,
-            visible_height: window_height / DEFAULT_CELL_SIZE,
-            simulated_width: window_width / DEFAULT_CELL_SIZE,
+            visible_width: window_width / constants::DEFAULT_CELL_SIZE,
+            visible_height: window_height / constants::DEFAULT_CELL_SIZE,
+            simulated_width: window_width / constants::DEFAULT_CELL_SIZE,
             padding_left: 0,
-            cell_size: DEFAULT_CELL_SIZE,
+            cell_size: constants::DEFAULT_CELL_SIZE,
             window_width,
             window_height,
             viewport_offset_x: 0,
@@ -329,7 +329,7 @@ impl RenderApp {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let cell_size = DEFAULT_CELL_SIZE;
+        let cell_size = constants::DEFAULT_CELL_SIZE;
 
         let cache_tiles = config.cache_tiles;
         let tile_size = config.tile_size;
@@ -577,31 +577,26 @@ impl RenderApp {
         let visible_cells_y = ((self.window_height as f32 / self.current_cell_size as f32) / self.viewport.zoom).ceil() as u32;
 
         // Safety: limit maximum buffer dimensions to prevent GPU issues
-        const MAX_CELLS_X: u32 = 5000;
-        const MAX_CELLS_Y: u32 = 5000;
-        const MIN_CELL_SIZE: u32 = 2;  // Prevent extremely small cells
-
-        if self.current_cell_size < MIN_CELL_SIZE {
+        if self.current_cell_size < constants::MIN_CELL_SIZE {
             log_warn!("Cell size {} is too small (minimum {})",
-                self.current_cell_size, MIN_CELL_SIZE);
+                self.current_cell_size, constants::MIN_CELL_SIZE);
             log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
 
-        if visible_cells_x > MAX_CELLS_X || visible_cells_y > MAX_CELLS_Y {
+        if visible_cells_x > constants::MAX_CELLS_X || visible_cells_y > constants::MAX_CELLS_Y {
             log_warn!("Requested dimensions {}x{} exceed safety limits ({}x{})",
-                visible_cells_x, visible_cells_y, MAX_CELLS_X, MAX_CELLS_Y);
+                visible_cells_x, visible_cells_y, constants::MAX_CELLS_X, constants::MAX_CELLS_Y);
             log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
 
         // Also check total cell count (width * height * padding factor)
         let total_cells = (visible_cells_x as u64 * 3) * visible_cells_y as u64;  // 3x for padding
-        const MAX_TOTAL_CELLS: u64 = 10_000_000;  // 10 million cells max
 
-        if total_cells > MAX_TOTAL_CELLS {
+        if total_cells > constants::MAX_TOTAL_CELLS {
             log_warn!("Total cell count {} exceeds limit {}",
-                total_cells, MAX_TOTAL_CELLS);
+                total_cells, constants::MAX_TOTAL_CELLS);
             log_warn!("Skipping computation to prevent GPU instability.");
             return;
         }
@@ -744,8 +739,8 @@ impl RenderApp {
         // Throttle params updates to ~60 FPS to reduce GPU load
         // This prevents excessive buffer writes during rapid viewport changes
         if let Some(last_update) = self.last_params_update {
-            if last_update.elapsed() < Duration::from_millis(16) {
-                return;  // Skip update if less than 16ms since last update
+            if last_update.elapsed() < Duration::from_millis(constants::RENDER_PARAMS_THROTTLE_MS) {
+                return;  // Skip update if less than throttle time since last update (~60 FPS)
             }
         }
 
@@ -788,7 +783,7 @@ impl RenderApp {
     pub fn reset_viewport(&mut self) {
         // Reset viewport to initial state (origin at center horizontally, top vertically)
         log_info!("Resetting viewport to initial state...");
-        self.current_cell_size = DEFAULT_CELL_SIZE;
+        self.current_cell_size = constants::DEFAULT_CELL_SIZE;
         self.viewport.zoom = 1.0;
 
         // Origin (0, 0) means: center horizontally, top vertically
@@ -814,12 +809,9 @@ impl RenderApp {
         // Zoom > 1.0 means zoomed IN (cells appear bigger)
         // Zoom < 1.0 means zoomed OUT (cells appear smaller)
         // zoom_factor = current_cell_size / base_cell_size
-        const ZOOM_MIN: f32 = 0.1;  // Allows zooming out to 1 pixel per cell
-        const ZOOM_MAX: f32 = 50.0; // Allows zooming in 5x more than previous max
-
-        let base_cell_size = DEFAULT_CELL_SIZE;
-        let min_cell_size = (base_cell_size as f32 * ZOOM_MIN).max(1.0) as u32;
-        let max_cell_size = (base_cell_size as f32 * ZOOM_MAX) as u32;
+        let base_cell_size = constants::DEFAULT_CELL_SIZE;
+        let min_cell_size = (base_cell_size as f32 * constants::ZOOM_MIN).max(1.0) as u32;
+        let max_cell_size = (base_cell_size as f32 * constants::ZOOM_MAX) as u32;
 
         // Generate zoom levels dynamically based on limits
         let zoom_levels: Vec<u32> = {
@@ -1064,11 +1056,8 @@ impl RenderApp {
                             let new_cell_size = (initial_cell_size as f32 * zoom_factor).max(1.0).min(500.0) as u32;
 
                             // Clamp to available zoom levels
-                            const ZOOM_MIN: f32 = 0.1;
-                            const ZOOM_MAX: f32 = 50.0;
-                            use crate::constants::DEFAULT_CELL_SIZE;
-                            let min_cell_size = (DEFAULT_CELL_SIZE as f32 * ZOOM_MIN).max(1.0) as u32;
-                            let max_cell_size = (DEFAULT_CELL_SIZE as f32 * ZOOM_MAX) as u32;
+                            let min_cell_size = (constants::DEFAULT_CELL_SIZE as f32 * constants::ZOOM_MIN).max(1.0) as u32;
+                            let max_cell_size = (constants::DEFAULT_CELL_SIZE as f32 * constants::ZOOM_MAX) as u32;
                             let clamped_cell_size = new_cell_size.clamp(min_cell_size, max_cell_size);
 
                             // Find nearest zoom level

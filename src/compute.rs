@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use crate::cache::{Tile, TileKey, TileCache};
-use crate::{log_info, log_warn};
+use crate::{constants, log_info, log_warn};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -136,9 +136,9 @@ fn compute_tile(
     });
 
     // Batch iterations to reduce memory accumulation
-    // Process in batches of 32 iterations, submit and cleanup after each batch
-    let workgroups = (simulated_width + 255) / 256;
-    let batch_size = 32u32;
+    // Process in batches, submit and cleanup after each batch
+    let workgroups = (simulated_width + constants::COMPUTE_WORKGROUP_SIZE - 1) / constants::COMPUTE_WORKGROUP_SIZE;
+    let batch_size = constants::COMPUTE_BATCH_SIZE;
 
     for batch_start in (0..total_generations).step_by(batch_size as usize) {
         let batch_end = (batch_start + batch_size).min(total_generations);
@@ -516,9 +516,9 @@ pub fn run_ca(
     });
 
     // Batch iterations to reduce memory accumulation
-    // Process in batches of 32 iterations, submit and cleanup after each batch
-    let workgroups = (simulated_width + 255) / 256;
-    let batch_size = 32u32;
+    // Process in batches, submit and cleanup after each batch
+    let workgroups = (simulated_width + constants::COMPUTE_WORKGROUP_SIZE - 1) / constants::COMPUTE_WORKGROUP_SIZE;
+    let batch_size = constants::COMPUTE_BATCH_SIZE;
 
     for batch_start in (0..total_iterations).step_by(batch_size as usize) {
         let batch_end = (batch_start + batch_size).min(total_iterations);
