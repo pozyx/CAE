@@ -14,6 +14,15 @@ Example of Rule 30 ![Example of Rule 30](image-1.png)
 Example of Rule 90 ![Example of Rule 90](image-2.png)
 Example of Rule 120 with customized initial state ![Example of Rule 120 with customized initial state](image-3.png)
 
+## Implementations
+
+| Version | Tech Stack | Platforms | Source |
+|---------|-----------|-----------|--------|
+| **Rust/WebGPU** (original) | Rust, wgpu, winit | Desktop + Web (WASM) | [`src/`](src/) |
+| **C++/CUDA** | C++17, CUDA, OpenGL 4.5, GLFW | Desktop (Windows, Linux) | [`cuda/`](cuda/) |
+
+The C++/CUDA version is a native port optimized for NVIDIA GPUs, using CUDA-OpenGL interop for zero-copy rendering. See the [CUDA README](cuda/README.md) for build instructions.
+
 ## Features
 
 - **GPU-Accelerated Computation**: All cellular automaton iterations are computed on the GPU using WebGPU compute shaders
@@ -319,7 +328,7 @@ The web version can be deployed to any static hosting service:
 ```
 CAE/
 ├── index.html              # Minimal redirect to src/index.html
-├── src/
+├── src/                    # Rust/WebGPU source
 │   ├── index.html          # Web UI and application entry point
 │   ├── shaders/            # WGSL compute and render shaders
 │   │   ├── ca_compute.wgsl # Cellular automaton compute shader
@@ -330,6 +339,12 @@ CAE/
 │   ├── render.rs           # Rendering logic (cross-platform)
 │   ├── compute.rs          # GPU compute orchestration
 │   └── cache.rs            # Tile caching system
+├── cuda/                   # C++/CUDA native port (see cuda/README.md)
+│   ├── src/                # C++ source files
+│   ├── shaders/            # GLSL vertex/fragment shaders
+│   ├── external/           # GLAD (OpenGL loader)
+│   ├── CMakeLists.txt      # CMake build configuration
+│   └── build.ps1           # Windows build script
 ├── pkg/                    # Generated WASM package (created by wasm-pack)
 │   ├── caelib_bg.wasm      # WebAssembly binary
 │   ├── caelib.js           # JavaScript bindings

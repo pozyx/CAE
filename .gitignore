@@ -1,5 +1,8 @@
 /target
 
+# CUDA/C++ build artifacts
+cuda/build/
+
 # Claude Code local settings (user-specific)
 .claude/settings.local.json
 tmp.txt
